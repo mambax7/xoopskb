@@ -191,4 +191,4 @@ Edit the snippet file to:
 
 - [[../../Tutorials/Getting-Started-with-XOOPS-4.0-Module-Development]]
 - [[../../Quick-Reference-Card]]
-- [[../../Implementation-Guides/Error-Handling-Validation-Guide]]
+- [Error Handling & Validation](../../Implementation-Guides/Error-Handling-Validation-Guide.md)

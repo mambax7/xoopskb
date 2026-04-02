@@ -6,7 +6,7 @@ updated: 2026-04-02
 version: 1.0.0
 author: XOOPS Team
 category: implementation-guide
-parent: "[[../XOOPS-4.0-Architecture]]"
+parent: ../XOOPS-4.0-Architecture.md
 php_version: "8.4+"
 tags:
   - events

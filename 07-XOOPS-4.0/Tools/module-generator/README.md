@@ -180,4 +180,4 @@ After generating your module:
 - [[../../Tutorials/Getting-Started-with-XOOPS-4.0-Module-Development]]
 - [[../../Tutorials/Adding-REST-API-to-Your-Module]]
 - [[../../Quick-Reference-Card]]
-- [[../../Implementation-Guides/Error-Handling-Validation-Guide]]
+- [Error Handling & Validation](../../Implementation-Guides/Error-Handling-Validation-Guide.md)

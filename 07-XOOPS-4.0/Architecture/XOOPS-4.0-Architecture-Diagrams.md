@@ -573,5 +573,5 @@ flowchart TB
 
 - [[../Tutorials/Getting-Started-with-XOOPS-4.0-Module-Development]]
 - [[../Quick-Reference-Card]]
-- [[../Implementation-Guides/Repository-Query-Patterns-Guide]]
-- [[../Implementation-Guides/Error-Handling-Validation-Guide]]
+- [Repository & Query Patterns](../Implementation-Guides/Repository-Query-Patterns-Guide.md)
+- [Error Handling & Validation](../Implementation-Guides/Error-Handling-Validation-Guide.md)

@@ -6,7 +6,7 @@ updated: 2026-04-02
 version: 1.0.0
 author: XOOPS Team
 category: implementation-guide
-parent: "[[../XOOPS-4.0-Architecture]]"
+parent: ../XOOPS-4.0-Architecture.md
 php_version: "8.4+"
 tags:
   - entity
@@ -458,10 +458,10 @@ class Page implements VersionAwareInterface, DomainEventAwareInterface, Auditabl
 
 ## Related
 
-- [[Repository-Query-Patterns-Guide|Repository & Query Patterns]]
-- [[Event-Driven-Architecture-Guide|Event-Driven Architecture]]
-- [[Error-Handling-Validation-Guide|Error Handling & Validation]]
-- [[../Reference-Implementations/XMF/README|XMF Reference Implementations]]
+- [Repository & Query Patterns](Repository-Query-Patterns-Guide.md)
+- [Event-Driven Architecture](Event-Driven-Architecture-Guide.md)
+- [Error Handling & Validation](Error-Handling-Validation-Guide.md)
+- [XMF Reference Implementations](../Reference-Implementations/XMF/README.md)
 
 ---
 

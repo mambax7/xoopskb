@@ -456,7 +456,7 @@ flowchart LR
 ## 🔗 Related
 
 - [[XMF-Components-Guide|XMF Everyday Components]] — ULID, Slug, JWT, YAML, Request
-- [[Repository-Query-Patterns-Guide|Repository & Query Patterns]]
+- [Repository & Query Patterns](Repository-Query-Patterns-Guide.md)
 - [[Event-System-Guide|Event System Guide]]
 - [[PSR-11-Dependency-Injection-Guide|Dependency Injection]]
 

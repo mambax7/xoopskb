@@ -1882,4 +1882,4 @@ curl "/modules/notes/api/v1/notes/search?q=hello" \
 ### Related Documentation
 
 - [[Getting-Started-with-XOOPS-4.0-Module-Development]]
-- [[../Implementation-Guides/Error-Handling-Validation-Guide]]
+- [Error Handling & Validation](../Implementation-Guides/Error-Handling-Validation-Guide.md)

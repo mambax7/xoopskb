@@ -1088,5 +1088,5 @@ final class LegacyCompatibilityTest extends TestCase
 
 - [[../Tutorials/Getting-Started-with-XOOPS-4.0-Module-Development]]
 - [[../Implementation-Guides/XMF-Components-Guide]]
-- [[../Implementation-Guides/Error-Handling-Validation-Guide]]
-- [[../Implementation-Guides/Entity-Mapping-Database-Patterns-Guide]]
+- [Error Handling & Validation](../Implementation-Guides/Error-Handling-Validation-Guide.md)
+- [Entity Mapping & Database Patterns](../Implementation-Guides/Entity-Mapping-Database-Patterns-Guide.md)

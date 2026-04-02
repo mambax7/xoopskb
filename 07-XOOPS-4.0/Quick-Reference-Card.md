@@ -437,6 +437,6 @@ php Benchmarks/IdBenchmark.php
 - [[Tutorials/Getting-Started-with-XOOPS-4.0-Module-Development]]
 - [[Tutorials/Adding-REST-API-to-Your-Module]]
 - [[Implementation-Guides/XMF-Components-Guide]]
-- [[Implementation-Guides/Error-Handling-Validation-Guide]]
-- [[Implementation-Guides/Repository-Query-Patterns-Guide]]
-- [[Implementation-Guides/Entity-Mapping-Database-Patterns-Guide]]
+- [Error Handling & Validation](Implementation-Guides/Error-Handling-Validation-Guide.md)
+- [Repository & Query Patterns](Implementation-Guides/Repository-Query-Patterns-Guide.md)
+- [Entity Mapping & Database Patterns](Implementation-Guides/Entity-Mapping-Database-Patterns-Guide.md)

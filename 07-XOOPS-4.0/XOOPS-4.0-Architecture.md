@@ -233,7 +233,7 @@ class LegacyArticleHandlerAdapter implements ArticleRepository
 ## Related Documentation
 
 - [[Architecture/XOOPS-4.0-Architecture-Diagrams|Architecture Diagrams]]
-- [[Implementation-Guides/Repository-Query-Patterns-Guide|Repository & Query Patterns]]
-- [[Implementation-Guides/Event-Driven-Architecture-Guide|Event-Driven Architecture]]
+- [Repository & Query Patterns](Implementation-Guides/Repository-Query-Patterns-Guide.md)
+- [Event-Driven Architecture](Implementation-Guides/Event-Driven-Architecture-Guide.md)
 - [[PSR-Standards/PSR-Standards-Overview|PSR Standards]]
 - [[Tools/vscode-snippets/README|XMF Reference Implementation]]

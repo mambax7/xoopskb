@@ -1712,7 +1712,7 @@ Congratulations! You've built a complete XOOPS module using modern PHP practices
 ### Related Documentation
 
 - [[../Implementation-Guides/XMF-Components-Guide]]
-- [[../Implementation-Guides/Error-Handling-Validation-Guide]]
-- [[../Implementation-Guides/Repository-Query-Patterns-Guide]]
-- [[../Implementation-Guides/Event-Driven-Architecture-Guide]]
-- [[../Implementation-Guides/Entity-Mapping-Database-Patterns-Guide]]
+- [Error Handling & Validation](../Implementation-Guides/Error-Handling-Validation-Guide.md)
+- [Repository & Query Patterns](../Implementation-Guides/Repository-Query-Patterns-Guide.md)
+- [Event-Driven Architecture](../Implementation-Guides/Event-Driven-Architecture-Guide.md)
+- [Entity Mapping & Database Patterns](../Implementation-Guides/Entity-Mapping-Database-Patterns-Guide.md)

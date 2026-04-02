@@ -6,7 +6,7 @@ updated: 2026-04-02
 version: 1.0.0
 author: XOOPS Team
 category: implementation-guide
-parent: "[[../XOOPS-4.0-Architecture]]"
+parent: ../XOOPS-4.0-Architecture.md
 php_version: "8.4+"
 tags:
   - repository
@@ -413,10 +413,10 @@ class PostTest extends TestCase
 
 ## Related
 
-- [[Entity-Mapping-Database-Patterns-Guide|Entity Mapping & Database Patterns]]
-- [[Event-Driven-Architecture-Guide|Event-Driven Architecture]]
-- [[Error-Handling-Validation-Guide|Error Handling & Validation]]
-- [[../../03-Module-Development/Patterns/Repository-Pattern|Repository Pattern (2.5.x)]]
+- [Entity Mapping & Database Patterns](Entity-Mapping-Database-Patterns-Guide.md)
+- [Event-Driven Architecture](Event-Driven-Architecture-Guide.md)
+- [Error Handling & Validation](Error-Handling-Validation-Guide.md)
+- [Repository Pattern (2.5.x)](../../03-Module-Development/Patterns/Repository-Pattern.md)
 
 ---
 

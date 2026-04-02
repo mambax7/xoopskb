@@ -96,7 +96,7 @@ flowchart LR
 
 - [[../XOOPS-4.0-Roadmap|XOOPS 4.0 Roadmap]]
 - [[../Roadmap/Architecture-Vision|Architecture Vision]]
-- [[../Reference-Modules/README|Reference Modules (xmfBlog + xmfPortal)]]
+- [Reference Modules (xmfBlog + xmfPortal)](../Reference-Modules/README.md)
 
 ---
 

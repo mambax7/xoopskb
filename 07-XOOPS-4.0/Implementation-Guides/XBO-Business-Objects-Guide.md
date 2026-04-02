@@ -586,7 +586,7 @@ Your Module
 - [[XMF-Advanced-Components|XMF Advanced Components]] — CommandBus, Repository, EventBus
 - [[XMF-Components-Guide|XMF Components Guide]] — ULID, Slug, JWT, YAML
 - [[XOOPS-4.0-Architecture|XOOPS 4.0 Architecture]]
-- [[Repository-Query-Patterns-Guide|Repository & Query Patterns]]
+- [Repository & Query Patterns](Repository-Query-Patterns-Guide.md)
 - [[../Roadmap/4.0-Specification|XOOPS 4.0 Specification]]
 
 ---
