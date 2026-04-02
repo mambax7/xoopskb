@@ -130,6 +130,105 @@ Recommended defaults:
 4. Strong API payload validation.
 5. Clear language constants for all UI states.
 
+## 11) Abstracting Global State
+
+**Problem:** Repository and middleware code accesses `$GLOBALS['xoopsUser']` directly in 20+ locations. This creates a hard dependency on XOOPS session state, making repositories untestable without bootstrapping the full XOOPS environment.
+
+**Solution:** Create a `CurrentUserProvider` service that wraps the global lookup once. Inject it into repositories and middleware.
+
+```php
+final class CurrentUserProvider
+{
+    public function __construct(
+        private readonly ?object $xoopsUser = null,
+    ) {
+    }
+
+    public function getId(): int
+    {
+        return is_object($this->xoopsUser)
+            ? (int) $this->xoopsUser->getVar('uid')
+            : 0;
+    }
+
+    public function getIp(): string
+    {
+        return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    }
+
+    public function isLoggedIn(): bool
+    {
+        return $this->getId() > 0;
+    }
+
+    public function getGroups(): array
+    {
+        return is_object($this->xoopsUser)
+            ? $this->xoopsUser->getGroups()
+            : [XOOPS_GROUP_ANONYMOUS];
+    }
+}
+```
+
+Register once in `BlogModule::boot()`:
+
+```php
+$container->singleton('current_user', function () {
+    return new CurrentUserProvider($GLOBALS['xoopsUser'] ?? null);
+});
+```
+
+Then inject into repositories instead of reading globals:
+
+```php
+// Before (in PostRepository::afterSave):
+$actorId = isset($GLOBALS['xoopsUser']) ? (int) $GLOBALS['xoopsUser']->getVar('uid') : 0;
+
+// After:
+$actorId = $this->currentUser->getId();
+```
+
+This is the same "airlock" principle used by `PreloadEventBridge` — touch the legacy environment once at the boundary, inject the abstraction everywhere else.
+
+## 12) Container Wiring Validation
+
+**Problem:** The container is lazy-loaded — misconfigured services only fail when first accessed at runtime. A typo in a service name or a missing dependency silently deploys and crashes later.
+
+**Solution:** Add an optional validation step that eagerly instantiates all registered services to catch wiring errors during install or CI, not in production.
+
+```php
+// Call during module install or in a PHPUnit test
+$container = BlogModule::init();
+$errors = [];
+foreach ($container->getRegisteredNames() as $name) {
+    try {
+        $container->get($name);
+    } catch (\Throwable $e) {
+        $errors[$name] = $e->getMessage();
+    }
+}
+if ($errors !== []) {
+    throw new \RuntimeException('Container wiring errors: ' . implode(', ', array_keys($errors)));
+}
+```
+
+This does not affect production performance — it runs only during install/test. Normal page loads continue to use lazy loading.
+
+## 13) Service Locator vs Constructor Injection
+
+XOOPS 2.5.x uses a **page-controller architecture** — each PHP file (`index.php`, `category.php`) is a standalone entry point loaded by the web server. There are no controller classes for frontend pages, so `$container->get()` calls in those files serve as the composition root for each entry point.
+
+This is a transitional pattern, not the target:
+
+| Layer | Current Pattern | Target Pattern (XOOPS 4.0) |
+|---|---|---|
+| **API controllers** | Constructor injection via Pipeline | Constructor injection (already correct) |
+| **Frontend pages** | `$container->get()` in page files | Controller methods with injected deps via router |
+| **Blocks** | `$container->get()` in block functions | Same (blocks remain standalone) |
+| **Repositories** | Constructor injection | Constructor injection (already correct) |
+
+When XOOPS 4.0 adds a router/dispatcher, frontend routes become controller methods and the service locator calls disappear.
+
 ## Advanced Review Checklist
 
 1. Are all side effects outside controllers where possible?
@@ -138,6 +237,9 @@ Recommended defaults:
 4. Is sort/filter input allowlisted?
 5. Are API write endpoints authenticated and validated?
 6. Are module templates mobile-responsive and Smarty-safe?
+7. Does any repository or service access `$GLOBALS` directly? (Use `CurrentUserProvider` instead)
+8. Are API controllers using constructor injection, not `$container->get()`?
+9. Has the container wiring been validated in tests or during install?
 
 ## Continue
 

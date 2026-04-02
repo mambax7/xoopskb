@@ -74,7 +74,7 @@ XMF solves these problems by introducing **141+ architectural components** that 
 
 1. **Non-breaking** — Every XMF component works alongside existing XOOPS code. You can adopt one component at a time.
 2. **Trait-based composition** — Entity behaviors are composed via PHP traits, not deep inheritance chains.
-3. **Constructor injection** — Dependencies are wired through a DI container, never through globals.
+3. **Constructor injection** — Dependencies are wired through a DI container, never through globals. The API layer (`PostApiController`) demonstrates this fully. Frontend page files use `$container->get()` as their composition root because XOOPS 2.5.x's page-controller architecture has no router to inject through — this is a transitional pattern, not the target architecture.
 4. **Backward compatible** — `QueryBuilder::fromCriteria()` bridges old code to new. `PreloadEventBridge` converts legacy preloads to modern events.
 5. **PHP 8.4+** — Takes full advantage of enums, readonly classes, property hooks, and typed properties.
 
@@ -2186,7 +2186,11 @@ $nm->send(
 ### Dashboard Unread Count
 
 ```php
+// Transitional: uses $GLOBALS directly (see ADVANCED_PATTERNS.md § "Abstracting Global State")
 $unreadNotifications = $nm->countUnread((int) $GLOBALS['xoopsUser']->getVar('uid'));
+
+// Recommended: use injected CurrentUserProvider
+// $unreadNotifications = $nm->countUnread($currentUser->getId());
 ```
 
 **Time saved:** ~100 lines of custom email/notification logic → ~15 lines with NotificationManager.
@@ -2228,6 +2232,12 @@ protected function afterSave(object $entity, bool $isNew): void
 
     // Get changed fields from ChangeTrackingTrait
     $newValues = method_exists($entity, 'getDirtyFields') ? $entity->getDirtyFields() : [];
+
+    // NOTE: Accessing $GLOBALS['xoopsUser'] directly in repository code is a
+    // known architectural shortcut. The recommended approach is to inject a
+    // CurrentUserProvider service (see ADVANCED_PATTERNS.md § "Abstracting
+    // Global State") so that repositories have no dependency on XOOPS globals
+    // and can be unit-tested with a mock provider.
 
     $auditLogger->log(
         actorId: $actorId,

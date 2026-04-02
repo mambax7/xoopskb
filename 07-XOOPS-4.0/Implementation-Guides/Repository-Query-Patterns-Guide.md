@@ -125,8 +125,8 @@ protected function afterSave(object $entity, bool $isNew): void
         $auditLogger = $container->get('audit_logger');
         $action = $isNew ? 'create' : 'update';
 
-        $actorId = isset($GLOBALS['xoopsUser']) ? (int) $GLOBALS['xoopsUser']->getVar('uid') : 0;
-        $actorIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $actorId = $this->currentUser->getId();
+        $actorIp = $this->currentUser->getIp();
 
         $auditLogger->log(
             $actorId,
@@ -181,8 +181,8 @@ protected function afterDelete(object $entity): void
         /** @var AuditLogger $auditLogger */
         $auditLogger = $container->get('audit_logger');
 
-        $actorId = isset($GLOBALS['xoopsUser']) ? (int) $GLOBALS['xoopsUser']->getVar('uid') : 0;
-        $actorIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $actorId = $this->currentUser->getId();
+        $actorIp = $this->currentUser->getIp();
 
         $auditLogger->log($actorId, $actorIp, $entity->getAuditEntityType(),
             $entity->getAuditEntityId(), 'delete', [], [], 'xmfblog');

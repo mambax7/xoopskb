@@ -69,9 +69,9 @@ class BlogModule implements ModuleBootstrapInterface
 }
 ```
 
-**Key insight:** Pages and controllers never instantiate services directly. They call `$container->get('service_name')`. This makes everything swappable and testable.
+**Key insight:** Services are never instantiated directly in page logic. Frontend pages access them via `$container->get('service_name')` — this is the composition root for XOOPS 2.5.x's page-controller architecture, where each PHP file is a standalone entry point. The API layer demonstrates the target pattern: `PostApiController` receives its dependencies via constructor injection through the middleware pipeline.
 
-**Source:** [BlogModule.php](../../modules/xmfblog/src/BlogModule.php) -- read the full `boot()` method to see all 27 registrations.
+**Source:** `modules/xmfblog/src/BlogModule.php` -- read the full `boot()` method to see all 27 registrations.
 
 ---
 

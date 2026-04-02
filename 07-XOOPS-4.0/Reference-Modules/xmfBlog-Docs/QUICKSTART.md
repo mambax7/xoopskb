@@ -52,7 +52,9 @@ Register services in one place:
 
 Use in pages:
 - `header.php` boots the container and helper.
-- all controllers use `$container->get('service_name')`.
+- Frontend pages use `$container->get('service_name')` to access services.
+
+> **Architectural note:** XOOPS 2.5.x uses a page-controller architecture where each PHP file (`index.php`, `category.php`) is a standalone entry point — there are no controller classes to inject into. Using `$container->get()` in page files is the composition root for that entry point. The API layer demonstrates the target pattern: `PostApiController` receives dependencies via constructor injection through the middleware pipeline. When XOOPS 4.0 adds a router/dispatcher, frontend pages will follow the same constructor injection pattern.
 
 ---
 

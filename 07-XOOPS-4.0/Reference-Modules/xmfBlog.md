@@ -189,6 +189,31 @@ If you only read five files, read these:
 
 ---
 
+## Architecture Notes
+
+### Container Access Pattern
+
+xmfBlog runs on XOOPS 2.5.x, which uses a **page-controller architecture** — each PHP file is a standalone entry point. Frontend pages use `$container->get()` as their composition root. This is a transitional pattern:
+
+| Layer | Pattern Used | Rationale |
+|---|---|---|
+| API controller | Constructor injection | Target architecture — dependencies explicit |
+| Frontend pages | `$container->get()` | No router/dispatcher in XOOPS 2.5.x to inject through |
+| Repositories | Constructor injection | Target architecture |
+| Blocks | `$container->get()` | Standalone functions, same constraint as pages |
+
+When XOOPS 4.0 adds a router, frontend pages become controller methods with injected dependencies.
+
+### Global State Abstraction
+
+`$GLOBALS['xoopsUser']` is abstracted behind `Xmf\Auth\CurrentUserProvider` — an XMF framework service registered once in `BlogModule::boot()`. Repositories and middleware receive it via constructor injection and never touch XOOPS globals directly. See [ADVANCED_PATTERNS.md](xmfBlog-Docs/ADVANCED_PATTERNS.md) section "Abstracting Global State" for the full pattern.
+
+### Container Wiring Validation
+
+`Xmf\Container\Container` provides a `validate()` method that eagerly resolves all registered services to catch wiring errors. Use it during module install or in tests — not on every page load.
+
+---
+
 ## What xmfBlog Does NOT Demonstrate
 
 These are covered by [xmfPortal](xmfPortal.md) instead:
