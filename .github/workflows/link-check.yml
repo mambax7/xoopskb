@@ -1,0 +1,204 @@
+name: Link Checker
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '**.md'
+      - '.github/workflows/link-check.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - '**.md'
+  schedule:
+    # Run weekly on Sundays at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  check-wikilinks:
+    name: Check Wikilinks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check wikilinks
+        run: |
+          python3 << 'EOF'
+          import os
+          import re
+          import sys
+          from collections import defaultdict, Counter
+
+          docs_dir = "."
+          wikilink_pattern = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')
+
+          # Build file map for Obsidian-style resolution
+          filename_to_paths = defaultdict(list)
+          for root, dirs, files in os.walk(docs_dir):
+              dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['site', '_tools', 'node_modules', '_build']]
+              for f in files:
+                  if f.endswith('.md'):
+                      full_path = os.path.join(root, f)
+                      rel_path = os.path.relpath(full_path, docs_dir)
+                      name = f[:-3]
+                      filename_to_paths[name].append(rel_path[:-3])
+
+          broken_links = []
+          broken_by_file = defaultdict(list)
+          total_links = 0
+
+          for root, dirs, files in os.walk(docs_dir):
+              dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['site', '_tools', 'node_modules', '_build']]
+              for f in files:
+                  if f.endswith('.md'):
+                      filepath = os.path.join(root, f)
+                      rel_filepath = os.path.relpath(filepath, docs_dir)
+                      current_dir = os.path.dirname(filepath)
+
+                      with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
+                          content = file.read()
+                          for match in wikilink_pattern.finditer(content):
+                              total_links += 1
+                              target = match.group(1).strip()
+
+                              if target.startswith('http') or target.startswith('#'):
+                                  continue
+
+                              check_target = target.split('#')[0] if '#' in target else target
+
+                              exists = False
+
+                              if check_target.startswith('../') or check_target.startswith('./'):
+                                  resolved = os.path.normpath(os.path.join(current_dir, check_target))
+                                  for ext in ['', '.md']:
+                                      if os.path.exists(resolved + ext):
+                                          exists = True
+                                          break
+                              else:
+                                  same_dir_path = os.path.join(current_dir, check_target)
+                                  for ext in ['', '.md']:
+                                      if os.path.exists(same_dir_path + ext):
+                                          exists = True
+                                          break
+
+                                  if not exists:
+                                      name = check_target.split('/')[-1] if '/' in check_target else check_target
+                                      if name in filename_to_paths:
+                                          exists = True
+
+                              if not exists:
+                                  broken_links.append(target)
+                                  broken_by_file[rel_filepath].append(target)
+
+          # Output results
+          print("=" * 80)
+          print("WIKILINKS AUDIT REPORT")
+          print("=" * 80)
+          print(f"Total wikilinks checked: {total_links}")
+          print(f"Broken links found: {len(broken_links)}")
+          print(f"Files with broken links: {len(broken_by_file)}")
+          print("=" * 80)
+
+          if broken_links:
+              print("\n❌ BROKEN LINKS FOUND:\n")
+              for filepath, targets in sorted(broken_by_file.items()):
+                  print(f"📄 {filepath}")
+                  for target in sorted(set(targets)):
+                      print(f"   ❌ [[{target}]]")
+                  print()
+
+              print("\nMost common missing targets:")
+              for target, count in Counter(broken_links).most_common(10):
+                  print(f"  {count}x [[{target}]]")
+
+              sys.exit(1)
+          else:
+              print("\n✅ All wikilinks are valid!")
+              sys.exit(0)
+          EOF
+
+  check-external-links:
+    name: Check External Links
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Restore lychee cache
+        uses: actions/cache@v4
+        with:
+          path: .lycheecache
+          key: cache-lychee-${{ github.sha }}
+          restore-keys: cache-lychee-
+
+      - name: Check external links
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: >-
+            --cache
+            --max-cache-age 1d
+            --exclude-loopback
+            --exclude-mail
+            --exclude "localhost"
+            --exclude "127.0.0.1"
+            --exclude "example.com"
+            --exclude "github.com/XOOPS"
+            --timeout 30
+            --max-retries 3
+            --accept 200,204,301,302,307,308
+            "**/*.md"
+          fail: false  # Don't fail on external link issues
+          output: ./lychee-report.md
+
+      - name: Upload link report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: link-report
+          path: ./lychee-report.md
+
+  mkdocs-build:
+    name: Test MkDocs Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install mkdocs mkdocs-material pymdown-extensions
+
+      - name: Build documentation
+        run: |
+          cd _tools
+          mkdocs build --strict 2>&1 | tee build-log.txt || true
+
+          # Count warnings
+          warnings=$(grep -c "WARNING" build-log.txt || echo "0")
+          echo "MkDocs warnings: $warnings"
+
+          if [ "$warnings" -gt 100 ]; then
+            echo "::warning::Too many MkDocs warnings ($warnings)"
+          fi
+
+      - name: Upload build log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mkdocs-build-log
+          path: _tools/build-log.txt

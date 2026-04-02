@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  XOOPS 4.0 Live Templates for PhpStorm/IntelliJ IDEA
+
+  Installation:
+  1. Copy this file to your PhpStorm templates folder:
+     - Windows: %APPDATA%\JetBrains\PhpStorm<version>\templates\
+     - macOS: ~/Library/Application Support/JetBrains/PhpStorm<version>/templates/
+     - Linux: ~/.config/JetBrains/PhpStorm<version>/templates/
+  2. Restart PhpStorm
+  3. Templates will appear under "XOOPS40" group
+
+  Usage: Type the abbreviation and press Tab to expand
+-->
+<templateSet group="XOOPS40">
+
+  <!-- ========================================================================
+       Value Objects
+       ======================================================================== -->
+
+  <template name="xvo" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Domain\ValueObject;&#10;&#10;use $NAMESPACE$\Domain\Exception\Invalid$NAME$;&#10;&#10;/**&#10; * $NAME$ - $DESCRIPTION$.&#10; */&#10;final readonly class $NAME$ implements \Stringable, \JsonSerializable&#10;{&#10;    private const int MIN_LENGTH = $MIN$;&#10;    private const int MAX_LENGTH = $MAX$;&#10;&#10;    private function __construct(&#10;        private string &#36;value&#10;    ) {}&#10;&#10;    public static function create(string &#36;value): self&#10;    {&#10;        &#36;value = trim(&#36;value);&#10;&#10;        if (mb_strlen(&#36;value) &lt; self::MIN_LENGTH) {&#10;            throw Invalid$NAME$::tooShort(self::MIN_LENGTH);&#10;        }&#10;&#10;        if (mb_strlen(&#36;value) &gt; self::MAX_LENGTH) {&#10;            throw Invalid$NAME$::tooLong(self::MAX_LENGTH);&#10;        }&#10;&#10;        return new self(&#36;value);&#10;    }&#10;&#10;    public function toString(): string&#10;    {&#10;        return &#36;this-&gt;value;&#10;    }&#10;&#10;    public function equals(self &#36;other): bool&#10;    {&#10;        return &#36;this-&gt;value === &#36;other-&gt;value;&#10;    }&#10;&#10;    public function __toString(): string&#10;    {&#10;        return &#36;this-&gt;value;&#10;    }&#10;&#10;    public function jsonSerialize(): string&#10;    {&#10;        return &#36;this-&gt;value;&#10;    }&#10;}&#10;" description="XOOPS 4.0 Value Object" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="groovyScript(&quot;def path = _editor.getVirtualFile().getPath(); def m = path =~ /modules\\/([^/]+)/; m.find() ? m.group(1).capitalize() : 'Module'&quot;)" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="NAME" expression="" defaultValue="Title" alwaysStopAt="true"/>
+    <variable name="DESCRIPTION" expression="" defaultValue="Value object description" alwaysStopAt="true"/>
+    <variable name="MIN" expression="" defaultValue="1" alwaysStopAt="true"/>
+    <variable name="MAX" expression="" defaultValue="200" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xid" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Domain\ValueObject;&#10;&#10;use Xmf\Ulid;&#10;use $NAMESPACE$\Domain\Exception\Invalid$ENTITY$Id;&#10;&#10;/**&#10; * $ENTITY$Id - Unique identifier for a $ENTITY$ entity.&#10; */&#10;final readonly class $ENTITY$Id implements \Stringable, \JsonSerializable&#10;{&#10;    private function __construct(&#10;        private Ulid &#36;ulid&#10;    ) {}&#10;&#10;    public static function generate(): self&#10;    {&#10;        return new self(Ulid::generate());&#10;    }&#10;&#10;    public static function fromString(string &#36;id): self&#10;    {&#10;        if (!Ulid::isValid(&#36;id)) {&#10;            throw Invalid$ENTITY$Id::invalidFormat(&#36;id);&#10;        }&#10;&#10;        return new self(Ulid::fromString(&#36;id));&#10;    }&#10;&#10;    public function toString(): string&#10;    {&#10;        return &#36;this-&gt;ulid-&gt;toString();&#10;    }&#10;&#10;    public function getTimestamp(): \DateTimeImmutable&#10;    {&#10;        return &#36;this-&gt;ulid-&gt;getTimestamp();&#10;    }&#10;&#10;    public function equals(self &#36;other): bool&#10;    {&#10;        return &#36;this-&gt;ulid-&gt;equals(&#36;other-&gt;ulid);&#10;    }&#10;&#10;    public function __toString(): string&#10;    {&#10;        return &#36;this-&gt;toString();&#10;    }&#10;&#10;    public function jsonSerialize(): string&#10;    {&#10;        return &#36;this-&gt;toString();&#10;    }&#10;}&#10;" description="XOOPS 4.0 Entity ID with ULID" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="ENTITY" expression="" defaultValue="Article" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xstatus" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Domain\ValueObject;&#10;&#10;/**&#10; * $ENTITY$Status - Lifecycle status of a $ENTITY$.&#10; */&#10;enum $ENTITY$Status: string&#10;{&#10;    case Draft = 'draft';&#10;    case Published = 'published';&#10;    case Archived = 'archived';&#10;&#10;    public function allowedTransitions(): array&#10;    {&#10;        return match (&#36;this) {&#10;            self::Draft =&gt; [self::Published, self::Archived],&#10;            self::Published =&gt; [self::Archived],&#10;            self::Archived =&gt; [self::Draft],&#10;        };&#10;    }&#10;&#10;    public function canTransitionTo(self &#36;target): bool&#10;    {&#10;        return in_array(&#36;target, &#36;this-&gt;allowedTransitions(), true);&#10;    }&#10;&#10;    public function label(): string&#10;    {&#10;        return match (&#36;this) {&#10;            self::Draft =&gt; 'Draft',&#10;            self::Published =&gt; 'Published',&#10;            self::Archived =&gt; 'Archived',&#10;        };&#10;    }&#10;}&#10;" description="XOOPS 4.0 Status Enum" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="ENTITY" expression="" defaultValue="Article" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <!-- ========================================================================
+       Entities
+       ======================================================================== -->
+
+  <template name="xentity" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Domain\Entity;&#10;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Id;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Title;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Content;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Status;&#10;&#10;/**&#10; * $ENTITY$ - $DESCRIPTION$.&#10; */&#10;final class $ENTITY$&#10;{&#10;    private \DateTimeImmutable &#36;updatedAt;&#10;&#10;    private function __construct(&#10;        private readonly $ENTITY$Id &#36;id,&#10;        private readonly int &#36;authorId,&#10;        private $ENTITY$Title &#36;title,&#10;        private $ENTITY$Content &#36;content,&#10;        private $ENTITY$Status &#36;status,&#10;        private readonly \DateTimeImmutable &#36;createdAt&#10;    ) {&#10;        &#36;this-&gt;updatedAt = &#36;createdAt;&#10;    }&#10;&#10;    public static function create(&#10;        int &#36;authorId,&#10;        $ENTITY$Title &#36;title,&#10;        $ENTITY$Content &#36;content&#10;    ): self {&#10;        return new self(&#10;            id: $ENTITY$Id::generate(),&#10;            authorId: &#36;authorId,&#10;            title: &#36;title,&#10;            content: &#36;content,&#10;            status: $ENTITY$Status::Draft,&#10;            createdAt: new \DateTimeImmutable()&#10;        );&#10;    }&#10;&#10;    public static function reconstitute(&#10;        $ENTITY$Id &#36;id,&#10;        int &#36;authorId,&#10;        $ENTITY$Title &#36;title,&#10;        $ENTITY$Content &#36;content,&#10;        $ENTITY$Status &#36;status,&#10;        \DateTimeImmutable &#36;createdAt,&#10;        \DateTimeImmutable &#36;updatedAt&#10;    ): self {&#10;        &#36;entity = new self(&#36;id, &#36;authorId, &#36;title, &#36;content, &#36;status, &#36;createdAt);&#10;        &#36;entity-&gt;updatedAt = &#36;updatedAt;&#10;        return &#36;entity;&#10;    }&#10;&#10;    public function getId(): $ENTITY$Id { return &#36;this-&gt;id; }&#10;    public function getAuthorId(): int { return &#36;this-&gt;authorId; }&#10;    public function getTitle(): $ENTITY$Title { return &#36;this-&gt;title; }&#10;    public function getContent(): $ENTITY$Content { return &#36;this-&gt;content; }&#10;    public function getStatus(): $ENTITY$Status { return &#36;this-&gt;status; }&#10;    public function getCreatedAt(): \DateTimeImmutable { return &#36;this-&gt;createdAt; }&#10;    public function getUpdatedAt(): \DateTimeImmutable { return &#36;this-&gt;updatedAt; }&#10;&#10;    public function updateTitle($ENTITY$Title &#36;newTitle): void&#10;    {&#10;        if (!&#36;this-&gt;title-&gt;equals(&#36;newTitle)) {&#10;            &#36;this-&gt;title = &#36;newTitle;&#10;            &#36;this-&gt;touch();&#10;        }&#10;    }&#10;&#10;    private function touch(): void&#10;    {&#10;        &#36;this-&gt;updatedAt = new \DateTimeImmutable();&#10;    }&#10;}&#10;" description="XOOPS 4.0 Domain Entity" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="ENTITY" expression="" defaultValue="Article" alwaysStopAt="true"/>
+    <variable name="DESCRIPTION" expression="" defaultValue="Domain entity description" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <!-- ========================================================================
+       Repository
+       ======================================================================== -->
+
+  <template name="xrepo" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Domain\Repository;&#10;&#10;use $NAMESPACE$\Domain\Entity\$ENTITY$;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Id;&#10;&#10;/**&#10; * $ENTITY$RepositoryInterface - Persistence contract.&#10; */&#10;interface $ENTITY$RepositoryInterface&#10;{&#10;    public function findById($ENTITY$Id &#36;id): $ENTITY$;&#10;    public function findByIdOrNull($ENTITY$Id &#36;id): ?$ENTITY$;&#10;    public function findByAuthorId(int &#36;authorId): array;&#10;    public function save($ENTITY$ &#36;entity): void;&#10;    public function delete($ENTITY$ &#36;entity): void;&#10;    public function exists($ENTITY$Id &#36;id): bool;&#10;}&#10;" description="XOOPS 4.0 Repository Interface" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="ENTITY" expression="" defaultValue="Article" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xrepoimpl" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Infrastructure\Persistence;&#10;&#10;use $NAMESPACE$\Domain\Entity\$ENTITY$;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Id;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Title;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Content;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Status;&#10;use $NAMESPACE$\Domain\Repository\$ENTITY$RepositoryInterface;&#10;use $NAMESPACE$\Domain\Exception\$ENTITY$NotFound;&#10;use XoopsDatabase;&#10;&#10;/**&#10; * MySql$ENTITY$Repository - MySQL implementation.&#10; */&#10;final class MySql$ENTITY$Repository implements $ENTITY$RepositoryInterface&#10;{&#10;    private const TABLE = '$TABLE$';&#10;&#10;    public function __construct(&#10;        private readonly XoopsDatabase &#36;db&#10;    ) {}&#10;&#10;    public function findById($ENTITY$Id &#36;id): $ENTITY$&#10;    {&#10;        &#36;entity = &#36;this-&gt;findByIdOrNull(&#36;id);&#10;&#10;        if (&#36;entity === null) {&#10;            throw $ENTITY$NotFound::withId(&#36;id);&#10;        }&#10;&#10;        return &#36;entity;&#10;    }&#10;&#10;    public function findByIdOrNull($ENTITY$Id &#36;id): ?$ENTITY$&#10;    {&#10;        &#36;sql = sprintf(&#10;            &quot;SELECT * FROM %s WHERE id = %s&quot;,&#10;            &#36;this-&gt;db-&gt;prefix(self::TABLE),&#10;            &#36;this-&gt;db-&gt;quoteString(&#36;id-&gt;toString())&#10;        );&#10;&#10;        &#36;result = &#36;this-&gt;db-&gt;query(&#36;sql);&#10;        &#36;row = &#36;this-&gt;db-&gt;fetchArray(&#36;result);&#10;&#10;        if (!&#36;row) {&#10;            return null;&#10;        }&#10;&#10;        return &#36;this-&gt;hydrate(&#36;row);&#10;    }&#10;&#10;    public function findByAuthorId(int &#36;authorId): array&#10;    {&#10;        &#36;sql = sprintf(&#10;            &quot;SELECT * FROM %s WHERE author_id = %d ORDER BY updated_at DESC&quot;,&#10;            &#36;this-&gt;db-&gt;prefix(self::TABLE),&#10;            &#36;authorId&#10;        );&#10;&#10;        &#36;result = &#36;this-&gt;db-&gt;query(&#36;sql);&#10;        &#36;entities = [];&#10;&#10;        while (&#36;row = &#36;this-&gt;db-&gt;fetchArray(&#36;result)) {&#10;            &#36;entities[] = &#36;this-&gt;hydrate(&#36;row);&#10;        }&#10;&#10;        return &#36;entities;&#10;    }&#10;&#10;    public function save($ENTITY$ &#36;entity): void&#10;    {&#10;        if (&#36;this-&gt;exists(&#36;entity-&gt;getId())) {&#10;            &#36;this-&gt;update(&#36;entity);&#10;        } else {&#10;            &#36;this-&gt;insert(&#36;entity);&#10;        }&#10;    }&#10;&#10;    public function delete($ENTITY$ &#36;entity): void&#10;    {&#10;        &#36;sql = sprintf(&#10;            &quot;DELETE FROM %s WHERE id = %s&quot;,&#10;            &#36;this-&gt;db-&gt;prefix(self::TABLE),&#10;            &#36;this-&gt;db-&gt;quoteString(&#36;entity-&gt;getId()-&gt;toString())&#10;        );&#10;&#10;        &#36;this-&gt;db-&gt;queryF(&#36;sql);&#10;    }&#10;&#10;    public function exists($ENTITY$Id &#36;id): bool&#10;    {&#10;        &#36;sql = sprintf(&#10;            &quot;SELECT COUNT(*) FROM %s WHERE id = %s&quot;,&#10;            &#36;this-&gt;db-&gt;prefix(self::TABLE),&#10;            &#36;this-&gt;db-&gt;quoteString(&#36;id-&gt;toString())&#10;        );&#10;&#10;        &#36;result = &#36;this-&gt;db-&gt;query(&#36;sql);&#10;        [&#36;count] = &#36;this-&gt;db-&gt;fetchRow(&#36;result);&#10;&#10;        return (int) &#36;count &gt; 0;&#10;    }&#10;&#10;    private function hydrate(array &#36;row): $ENTITY$&#10;    {&#10;        return $ENTITY$::reconstitute(&#10;            id: $ENTITY$Id::fromString(&#36;row['id']),&#10;            authorId: (int) &#36;row['author_id'],&#10;            title: $ENTITY$Title::create(&#36;row['title']),&#10;            content: $ENTITY$Content::create(&#36;row['content']),&#10;            status: $ENTITY$Status::from(&#36;row['status']),&#10;            createdAt: new \DateTimeImmutable(&#36;row['created_at']),&#10;            updatedAt: new \DateTimeImmutable(&#36;row['updated_at'])&#10;        );&#10;    }&#10;&#10;    private function insert($ENTITY$ &#36;entity): void&#10;    {&#10;        // Implementation&#10;        &#36;END&#36;&#10;    }&#10;&#10;    private function update($ENTITY$ &#36;entity): void&#10;    {&#10;        // Implementation&#10;    }&#10;}&#10;" description="XOOPS 4.0 MySQL Repository Implementation" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="ENTITY" expression="" defaultValue="Article" alwaysStopAt="true"/>
+    <variable name="TABLE" expression="" defaultValue="module_article" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <!-- ========================================================================
+       Exceptions
+       ======================================================================== -->
+
+  <template name="xexception" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Domain\Exception;&#10;&#10;/**&#10; * $NAME$ - $DESCRIPTION$.&#10; */&#10;final class $NAME$ extends $BASE$&#10;{&#10;    protected function __construct(&#10;        string &#36;message,&#10;        public readonly string &#36;errorCode,&#10;        public readonly array &#36;context = []&#10;    ) {&#10;        parent::__construct(&#36;message);&#10;    }&#10;&#10;    public static function $FACTORY$(&#36;$PARAM$): self&#10;    {&#10;        return new self(&#10;            message: &quot;$MESSAGE$: {&#36;$PARAM$}&quot;,&#10;            errorCode: '$ERROR_CODE$',&#10;            context: ['$PARAM$' =&gt; &#36;$PARAM$]&#10;        );&#10;    }&#10;&#10;    public function toArray(): array&#10;    {&#10;        return [&#10;            'error' =&gt; &#36;this-&gt;errorCode,&#10;            'message' =&gt; &#36;this-&gt;message,&#10;            'context' =&gt; &#36;this-&gt;context,&#10;        ];&#10;    }&#10;}&#10;" description="XOOPS 4.0 Domain Exception" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="NAME" expression="" defaultValue="InvalidTitle" alwaysStopAt="true"/>
+    <variable name="DESCRIPTION" expression="" defaultValue="Thrown when title is invalid" alwaysStopAt="true"/>
+    <variable name="BASE" expression="" defaultValue="DomainException" alwaysStopAt="true"/>
+    <variable name="FACTORY" expression="" defaultValue="tooLong" alwaysStopAt="true"/>
+    <variable name="PARAM" expression="" defaultValue="maxLength" alwaysStopAt="true"/>
+    <variable name="MESSAGE" expression="" defaultValue="Title cannot exceed" alwaysStopAt="true"/>
+    <variable name="ERROR_CODE" expression="" defaultValue="TITLE_TOO_LONG" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <!-- ========================================================================
+       Commands
+       ======================================================================== -->
+
+  <template name="xcmd" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Application\Command;&#10;&#10;/**&#10; * $ACTION$$ENTITY$Command - Request to $ACTION_LOWER$ a $ENTITY$.&#10; */&#10;final readonly class $ACTION$$ENTITY$Command&#10;{&#10;    public function __construct(&#10;        public int &#36;userId,&#10;        public string &#36;$FIELD1$,&#10;        public string &#36;$FIELD2$ = ''&#10;    ) {}&#10;}&#10;" description="XOOPS 4.0 Command" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="ACTION" expression="" defaultValue="Create" alwaysStopAt="true"/>
+    <variable name="ACTION_LOWER" expression="lowercaseAndDash(ACTION)" defaultValue="create" alwaysStopAt="false"/>
+    <variable name="ENTITY" expression="" defaultValue="Article" alwaysStopAt="true"/>
+    <variable name="FIELD1" expression="" defaultValue="title" alwaysStopAt="true"/>
+    <variable name="FIELD2" expression="" defaultValue="content" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xhandler" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Application\Command;&#10;&#10;use $NAMESPACE$\Domain\Entity\$ENTITY$;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Title;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Content;&#10;use $NAMESPACE$\Domain\Repository\$ENTITY$RepositoryInterface;&#10;&#10;/**&#10; * $ACTION$$ENTITY$Handler - Executes the $ACTION_LOWER$ use case.&#10; */&#10;final readonly class $ACTION$$ENTITY$Handler&#10;{&#10;    public function __construct(&#10;        private $ENTITY$RepositoryInterface &#36;repository&#10;    ) {}&#10;&#10;    public function handle($ACTION$$ENTITY$Command &#36;command): $ENTITY$&#10;    {&#10;        &#36;title = $ENTITY$Title::create(&#36;command-&gt;title);&#10;        &#36;content = $ENTITY$Content::create(&#36;command-&gt;content);&#10;&#10;        &#36;entity = $ENTITY$::create(&#10;            authorId: &#36;command-&gt;userId,&#10;            title: &#36;title,&#10;            content: &#36;content&#10;        );&#10;&#10;        &#36;this-&gt;repository-&gt;save(&#36;entity);&#10;&#10;        return &#36;entity;&#10;    }&#10;}&#10;" description="XOOPS 4.0 Command Handler" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="ACTION" expression="" defaultValue="Create" alwaysStopAt="true"/>
+    <variable name="ACTION_LOWER" expression="lowercaseAndDash(ACTION)" defaultValue="create" alwaysStopAt="false"/>
+    <variable name="ENTITY" expression="" defaultValue="Article" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <!-- ========================================================================
+       Queries
+       ======================================================================== -->
+
+  <template name="xquery" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Application\Query;&#10;&#10;/**&#10; * Get$ENTITY$Query - Request to retrieve a $ENTITY$.&#10; */&#10;final readonly class Get$ENTITY$Query&#10;{&#10;    public function __construct(&#10;        public string &#36;id,&#10;        public int &#36;userId&#10;    ) {}&#10;}&#10;" description="XOOPS 4.0 Query" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="ENTITY" expression="" defaultValue="Article" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xqueryhandler" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Application\Query;&#10;&#10;use $NAMESPACE$\Domain\Entity\$ENTITY$;&#10;use $NAMESPACE$\Domain\ValueObject\$ENTITY$Id;&#10;use $NAMESPACE$\Domain\Repository\$ENTITY$RepositoryInterface;&#10;&#10;/**&#10; * Get$ENTITY$Handler - Retrieves a $ENTITY$.&#10; */&#10;final readonly class Get$ENTITY$Handler&#10;{&#10;    public function __construct(&#10;        private $ENTITY$RepositoryInterface &#36;repository&#10;    ) {}&#10;&#10;    public function handle(Get$ENTITY$Query &#36;query): $ENTITY$&#10;    {&#10;        &#36;id = $ENTITY$Id::fromString(&#36;query-&gt;id);&#10;        &#36;entity = &#36;this-&gt;repository-&gt;findById(&#36;id);&#10;&#10;        if (!&#36;entity-&gt;canBeEditedBy(&#36;query-&gt;userId)) {&#10;            throw new \DomainException('Access denied');&#10;        }&#10;&#10;        return &#36;entity;&#10;    }&#10;}&#10;" description="XOOPS 4.0 Query Handler" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="ENTITY" expression="" defaultValue="Article" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <!-- ========================================================================
+       Testing
+       ======================================================================== -->
+
+  <template name="xtest" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$\Tests\Unit\$LAYER$;&#10;&#10;use PHPUnit\Framework\TestCase;&#10;use PHPUnit\Framework\Attributes\Test;&#10;use PHPUnit\Framework\Attributes\CoversClass;&#10;use $CLASS_FQN$;&#10;&#10;#[CoversClass($CLASS$::class)]&#10;final class $CLASS$Test extends TestCase&#10;{&#10;    #[Test]&#10;    public function it_$TEST_NAME$(): void&#10;    {&#10;        // Arrange&#10;        &#36;END&#36;&#10;&#10;        // Act&#10;&#10;        // Assert&#10;    }&#10;}&#10;" description="XOOPS 4.0 PHPUnit Test Class" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module" alwaysStopAt="true"/>
+    <variable name="LAYER" expression="" defaultValue="Domain\ValueObject" alwaysStopAt="true"/>
+    <variable name="CLASS_FQN" expression="" defaultValue="Module\Domain\ValueObject\ArticleTitle" alwaysStopAt="true"/>
+    <variable name="CLASS" expression="regularExpression(CLASS_FQN, &quot;.*\\\\(.*)&quot;, &quot;$1&quot;)" defaultValue="ArticleTitle" alwaysStopAt="false"/>
+    <variable name="TEST_NAME" expression="" defaultValue="creates_valid_instance" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xtestm" value="#[Test]&#10;public function it_$NAME$(): void&#10;{&#10;    // Arrange&#10;    $ARRANGE$&#10;&#10;    // Act&#10;    $ACT$&#10;&#10;    // Assert&#10;    &#36;this-&gt;assert$ASSERTION$($EXPECTED$);&#10;}" description="XOOPS 4.0 Test Method" toReformat="true" toShortenFQNames="true">
+    <variable name="NAME" expression="" defaultValue="does_something" alwaysStopAt="true"/>
+    <variable name="ARRANGE" expression="" defaultValue="" alwaysStopAt="true"/>
+    <variable name="ACT" expression="" defaultValue="" alwaysStopAt="true"/>
+    <variable name="ASSERTION" expression="" defaultValue="True" alwaysStopAt="true"/>
+    <variable name="EXPECTED" expression="" defaultValue="" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xprovider" value="#[Test]&#10;#[DataProvider('$PROVIDER_NAME$')]&#10;public function it_$TEST_NAME$($PARAMS$): void&#10;{&#10;    $BODY$&#10;}&#10;&#10;public static function $PROVIDER_NAME$(): array&#10;{&#10;    return [&#10;        '$CASE1$' =&gt; [$VALUE1$],&#10;        '$CASE2$' =&gt; [$VALUE2$],&#10;    ];&#10;}" description="XOOPS 4.0 Test with Data Provider" toReformat="true" toShortenFQNames="true">
+    <variable name="PROVIDER_NAME" expression="" defaultValue="dataProvider" alwaysStopAt="true"/>
+    <variable name="TEST_NAME" expression="" defaultValue="handles_various_inputs" alwaysStopAt="true"/>
+    <variable name="PARAMS" expression="" defaultValue="string $input, bool $expected" alwaysStopAt="true"/>
+    <variable name="BODY" expression="" defaultValue="" alwaysStopAt="true"/>
+    <variable name="CASE1" expression="" defaultValue="valid input" alwaysStopAt="true"/>
+    <variable name="VALUE1" expression="" defaultValue="'test', true" alwaysStopAt="true"/>
+    <variable name="CASE2" expression="" defaultValue="invalid input" alwaysStopAt="true"/>
+    <variable name="VALUE2" expression="" defaultValue="'', false" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <!-- ========================================================================
+       Common Patterns
+       ======================================================================== -->
+
+  <template name="xphp" value="&lt;?php&#10;&#10;declare(strict_types=1);&#10;&#10;namespace $NAMESPACE$;&#10;&#10;$END$" description="XOOPS 4.0 PHP File Header" toReformat="true" toShortenFQNames="true">
+    <variable name="NAMESPACE" expression="" defaultValue="Module\Domain" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xulid" value="&#36;$VAR$ = Ulid::generate();&#10;$END$" description="Generate ULID" toReformat="true" toShortenFQNames="true">
+    <variable name="VAR" expression="" defaultValue="ulid" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xulidv" value="if (!Ulid::isValid(&#36;$VAR$)) {&#10;    throw Invalid$ENTITY$Id::invalidFormat(&#36;$VAR$);&#10;}&#10;$END$" description="Validate ULID" toReformat="true" toShortenFQNames="true">
+    <variable name="VAR" expression="" defaultValue="id" alwaysStopAt="true"/>
+    <variable name="ENTITY" expression="" defaultValue="Article" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xslug" value="&#36;$VAR$ = Slug::create(&#36;$TEXT$, [&#10;    'maxLength' =&gt; $MAX$,&#10;    'separator' =&gt; '-',&#10;]);&#10;$END$" description="Create URL slug" toReformat="true" toShortenFQNames="true">
+    <variable name="VAR" expression="" defaultValue="slug" alwaysStopAt="true"/>
+    <variable name="TEXT" expression="" defaultValue="text" alwaysStopAt="true"/>
+    <variable name="MAX" expression="" defaultValue="60" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xtrans" value="if (!&#36;this-&gt;status-&gt;canTransitionTo($ENTITY$Status::$TARGET$)) {&#10;    throw InvalidStatusTransition::create(&#36;this-&gt;status, $ENTITY$Status::$TARGET$);&#10;}&#10;&#36;this-&gt;status = $ENTITY$Status::$TARGET$;&#10;&#36;this-&gt;touch();&#10;$END$" description="Status transition with validation" toReformat="true" toShortenFQNames="true">
+    <variable name="ENTITY" expression="" defaultValue="Article" alwaysStopAt="true"/>
+    <variable name="TARGET" expression="" defaultValue="Published" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xsql" value="&#36;sql = sprintf(&#10;    &quot;SELECT * FROM %s WHERE $COLUMN$ = %s&quot;,&#10;    &#36;this-&gt;db-&gt;prefix('$TABLE$'),&#10;    &#36;this-&gt;db-&gt;quoteString(&#36;$VALUE$)&#10;);&#10;&#10;&#36;result = &#36;this-&gt;db-&gt;query(&#36;sql);&#10;&#36;row = &#36;this-&gt;db-&gt;fetchArray(&#36;result);&#10;&#10;if (!&#36;row) {&#10;    return null;&#10;}&#10;&#10;return &#36;this-&gt;hydrate(&#36;row);&#10;$END$" description="MySQL repository query" toReformat="true" toShortenFQNames="true">
+    <variable name="COLUMN" expression="" defaultValue="id" alwaysStopAt="true"/>
+    <variable name="TABLE" expression="" defaultValue="module_entity" alwaysStopAt="true"/>
+    <variable name="VALUE" expression="" defaultValue="id" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xservice" value="public function get$SERVICE$(): $TYPE$&#10;{&#10;    return &#36;this-&gt;services[$TYPE$::class] ??=&#10;        new $TYPE$($DEPS$);&#10;}&#10;$END$" description="Container service getter" toReformat="true" toShortenFQNames="true">
+    <variable name="SERVICE" expression="" defaultValue="ArticleRepository" alwaysStopAt="true"/>
+    <variable name="TYPE" expression="" defaultValue="MySqlArticleRepository" alwaysStopAt="true"/>
+    <variable name="DEPS" expression="" defaultValue="$this->db" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <!-- ========================================================================
+       API Patterns
+       ======================================================================== -->
+
+  <template name="xapires" value="return Response::json([&#10;    'data' =&gt; [&#10;        'id' =&gt; &#36;$VAR$-&gt;getId()-&gt;toString(),&#10;        'type' =&gt; '$TYPE$',&#10;        'attributes' =&gt; [&#10;            'title' =&gt; &#36;$VAR$-&gt;getTitle()-&gt;toString(),&#10;            'created_at' =&gt; &#36;$VAR$-&gt;getCreatedAt()-&gt;format(\DateTimeInterface::RFC3339),&#10;        ],&#10;    ],&#10;]);&#10;$END$" description="API JSON response" toReformat="true" toShortenFQNames="true">
+    <variable name="VAR" expression="" defaultValue="entity" alwaysStopAt="true"/>
+    <variable name="TYPE" expression="" defaultValue="article" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+  <template name="xvalidate" value="&#36;data = &#36;this-&gt;validate(&#36;request-&gt;getBody(), [&#10;    '$FIELD1$' =&gt; 'required|string|min:1|max:200',&#10;    '$FIELD2$' =&gt; 'string|max:50000',&#10;]);&#10;$END$" description="API request validation" toReformat="true" toShortenFQNames="true">
+    <variable name="FIELD1" expression="" defaultValue="title" alwaysStopAt="true"/>
+    <variable name="FIELD2" expression="" defaultValue="content" alwaysStopAt="true"/>
+    <context>
+      <option name="PHP" value="true"/>
+    </context>
+  </template>
+
+</templateSet>

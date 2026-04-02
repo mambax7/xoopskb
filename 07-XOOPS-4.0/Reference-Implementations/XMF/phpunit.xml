@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    PHPUnit Configuration for XMF Reference Implementations
+
+    Run all tests:     ./vendor/bin/phpunit
+    Run with coverage: ./vendor/bin/phpunit --coverage-html coverage
+    Run specific test: ./vendor/bin/phpunit Tests/UlidTest.php
+    Run specific group: ./vendor/bin/phpunit --group ulid
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.0/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         cacheDirectory=".phpunit.cache"
+         executionOrder="depends,defects"
+         requireCoverageMetadata="false"
+         beStrictAboutCoverageMetadata="false"
+         beStrictAboutOutputDuringTests="true"
+         failOnRisky="true"
+         failOnWarning="true"
+         colors="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnTestsThatTriggerErrors="true"
+         displayDetailsOnTestsThatTriggerNotices="true"
+         displayDetailsOnTestsThatTriggerWarnings="true">
+
+    <!-- Test Suites -->
+    <testsuites>
+        <testsuite name="XMF Components">
+            <directory>Tests</directory>
+        </testsuite>
+        <testsuite name="Ulid">
+            <file>Tests/UlidTest.php</file>
+        </testsuite>
+        <testsuite name="Slug">
+            <file>Tests/SlugTest.php</file>
+        </testsuite>
+    </testsuites>
+
+    <!-- Code Coverage Configuration -->
+    <source>
+        <include>
+            <file>Ulid.php</file>
+            <file>Slug.php</file>
+            <file>EntityId.php</file>
+        </include>
+        <exclude>
+            <directory>Tests</directory>
+            <directory>vendor</directory>
+        </exclude>
+    </source>
+
+    <coverage>
+        <report>
+            <html outputDirectory="coverage"/>
+            <text outputFile="php://stdout" showOnlySummary="true"/>
+            <clover outputFile="coverage/clover.xml"/>
+        </report>
+    </coverage>
+
+    <!-- PHP Configuration -->
+    <php>
+        <ini name="error_reporting" value="-1"/>
+        <ini name="display_errors" value="1"/>
+        <ini name="display_startup_errors" value="1"/>
+        <ini name="memory_limit" value="256M"/>
+
+        <!-- Environment variables for testing -->
+        <env name="APP_ENV" value="testing"/>
+        <env name="XOOPS_VAR_PATH" value="/tmp/xoops"/>
+    </php>
+
+    <!-- Test Groups -->
+    <groups>
+        <include>
+            <group>ulid</group>
+            <group>slug</group>
+            <group>entity-id</group>
+        </include>
+    </groups>
+
+    <!-- Logging -->
+    <logging>
+        <testdoxHtml outputFile="testdox.html"/>
+        <junit outputFile="junit.xml"/>
+    </logging>
+
+</phpunit>

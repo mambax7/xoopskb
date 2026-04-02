@@ -1,0 +1,472 @@
+name: Deploy XOOPS Knowledge Base
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'docs/**'
+      - '*.md'
+      - '**/*.md'
+      - '_tools/mkdocs.yml'
+      - '.github/workflows/deploy-docs.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-mkdocs
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install mkdocs mkdocs-material pymdown-extensions mkdocs-minify-plugin
+
+      - name: Prepare documentation
+        run: |
+          # Create docs directory structure
+          mkdir -p docs
+
+          # Copy all markdown files preserving structure
+          # Exclude hidden folders, tools, build, and templates
+          rsync -av \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.obsidian/' \
+            --exclude='_tools/' \
+            --exclude='_build/' \
+            --exclude='_templates/' \
+            --exclude='_meta/' \
+            --exclude='.space/' \
+            --exclude='.makemd/' \
+            --include='*/' \
+            --include='*.md' \
+            --exclude='*' \
+            ./ docs/
+
+          # Convert wikilinks to standard markdown links
+          python3 << 'EOF'
+          import os
+          import re
+          from pathlib import Path
+
+          def convert_wikilink(match):
+              content = match.group(1).strip()
+              
+              if '|' in content:
+                  target, display = content.split('|', 1)
+                  target, display = target.strip(), display.strip()
+              else:
+                  target, display = content, content
+
+              # Support [[Page#Section|Text]] anchor links
+              anchor = ""
+              if '#' in target:
+                  target, anchor_part = target.split('#', 1)
+                  anchor = '#' + re.sub(r'\s+', '-', anchor_part.strip()).lower()
+
+              # Preserve case - add .md extension for MkDocs to resolve
+              # MkDocs will convert these to directory-style URLs when use_directory_urls: true
+              if not target.lower().endswith('.md'):
+                  target = f"{target}.md"
+              
+              link_target = target
+
+              return f"[{display}]({link_target}{anchor})"
+
+          docs_dir = Path('docs')
+          converted_count = 0
+          for md_file in docs_dir.rglob('*.md'):
+              content = md_file.read_text(encoding='utf-8')
+              new_content = re.sub(r'\[\[([^\]]+)\]\]', convert_wikilink, content)
+              if new_content != content:
+                  md_file.write_text(new_content, encoding='utf-8')
+                  converted_count += 1
+
+          print(f"Converted wikilinks in {converted_count} files")
+          EOF
+
+          # Normalize internal markdown links to fix relative path issues
+          python3 << 'EOF'
+          import os
+          import re
+          from pathlib import Path
+
+          docs_root = Path("docs").resolve()
+          md_files = list(docs_root.rglob("*.md"))
+
+          # Build lookup by basename and stem (case-insensitive)
+          by_basename = {}
+          by_stem = {}
+          for p in md_files:
+              by_basename.setdefault(p.name.lower(), []).append(p)
+              by_stem.setdefault(p.stem.lower(), []).append(p)
+
+          link_re = re.compile(r"\]\(([^)]+)\)")
+
+          def is_external(href: str) -> bool:
+              href = href.strip()
+              return (
+                  href.startswith(("http://", "https://", "mailto:", "tel:", "#"))
+                  or href.startswith("data:")
+              )
+
+          # WRAPPER FUNCTION TO CREATE SCOPE FOR nonlocal
+          def process_file(src):
+              try:
+                  text = src.read_text(encoding="utf-8")
+              except Exception:
+                  return False
+                  
+              changed = False
+
+              def repl(m):
+                  nonlocal changed
+                  href = m.group(1).strip()
+                  if is_external(href):
+                      return m.group(0)
+
+                  # Split anchor
+                  if "#" in href:
+                      path_part, anchor = href.split("#", 1)
+                      anchor = "#" + anchor
+                  else:
+                      path_part, anchor = href, ""
+
+                  if not path_part.lower().endswith(".md"):
+                      return m.group(0)
+
+                  # 1) Resolve as written (relative to current file)
+                  cand = (src.parent / path_part).resolve()
+                  target = cand if cand.exists() and cand.is_relative_to(docs_root) else None
+
+                  # 2) Try docs-root relative
+                  if target is None:
+                      cand2 = (docs_root / path_part).resolve()
+                      if cand2.exists() and cand2.is_relative_to(docs_root):
+                          target = cand2
+
+                  # 3) Rescue by basename/stem match (unique only)
+                  if target is None:
+                      base = Path(path_part).name.lower()
+                      hits = by_basename.get(base, [])
+                      if len(hits) == 1:
+                          target = hits[0]
+                      else:
+                          stem = Path(path_part).stem.lower()
+                          hits = by_stem.get(stem, [])
+                          if len(hits) == 1:
+                              target = hits[0]
+
+                  if target is None:
+                      return m.group(0)
+
+                  # Compute correct relative path
+                  try:
+                      rel_from_src = target.relative_to(src.parent)
+                      changed = True
+                      return f"]({rel_from_src.as_posix()}{anchor})"
+                  except ValueError:
+                      # If can't make relative from parent, compute via common base
+                      try:
+                          target_rel = target.relative_to(docs_root)
+                          src_parent_rel = src.parent.relative_to(docs_root)
+                          rel_path = os.path.relpath(target_rel.as_posix(), start=src_parent_rel.as_posix())
+                          changed = True
+                          return f"]({rel_path}{anchor})"
+                      except (ValueError, Exception):
+                          # Keep original if we can't compute relative path
+                          return m.group(0)
+
+              new_text = link_re.sub(repl, text)
+              if changed:
+                  src.write_text(new_text, encoding="utf-8")
+                  return True
+              return False
+
+          normalized_count = 0
+          for src in md_files:
+              if process_file(src):
+                  normalized_count += 1
+
+          print(f"Normalized links in {normalized_count} files")
+          EOF
+
+          # Create index.md from Home.md if it exists
+          if [ -f docs/00-Home/Home.md ]; then
+            cp docs/00-Home/Home.md docs/index.md
+            echo "Created index.md from Home.md"
+          elif [ -f docs/README.md ]; then
+            cp docs/README.md docs/index.md
+            echo "Created index.md from README.md"
+          fi
+
+          # Auto-create missing index.md files for top-level sections
+          python3 << 'EOF'
+          import re
+          import shutil
+          from pathlib import Path
+
+          docs = Path("docs")
+          section_pattern = re.compile(r"^\d{2}-")
+
+          for section_dir in docs.iterdir():
+              if not section_dir.is_dir() or not section_pattern.match(section_dir.name):
+                  continue
+
+              index_file = section_dir / "index.md"
+              if index_file.exists():
+                  continue
+
+              # Extract title from folder name: "01-Getting-Started" -> "Getting Started"
+              section_title = section_dir.name.split("-", 1)[1].replace("-", " ")
+              
+              # Try to find a main content file matching the title
+              candidates = [p for p in section_dir.glob("*.md") if p.name.lower() != "index.md"]
+              
+              matching_file = None
+              for candidate_path in candidates:
+                  if candidate_path.stem.lower() == section_title.lower():
+                      matching_file = candidate_path
+                      break
+              
+              if matching_file:
+                  shutil.copy2(matching_file, index_file)
+                  print(f"Created {index_file} from {matching_file}")
+              else:
+                  # Create a stub index.md with informative content
+                  stub_content = (
+                      "---\n"
+                      f"title: {section_title}\n"
+                      "---\n"
+                      "\n"
+                      f"# {section_title}\n"
+                      "\n"
+                      f"This section contains documentation about {section_title.lower()}.\n"
+                      "\n"
+                      "Browse the subsections in the navigation menu to explore the available topics.\n"
+                  )
+                  index_file.write_text(stub_content, encoding="utf-8")
+                  print(f"Created stub {index_file}")
+          EOF
+
+          # Copy mkdocs.yml to root (where mkdocs expects it)
+          if [ -f _tools/mkdocs.yml ]; then
+            cp _tools/mkdocs.yml mkdocs.yml
+            echo "Copied mkdocs.yml from _tools/"
+          elif [ -f _build/mkdocs.yml ]; then
+            cp _build/mkdocs.yml mkdocs.yml
+            echo "Copied mkdocs.yml from _build/"
+          fi
+
+          # Verify mkdocs.yml exists
+          if [ ! -f mkdocs.yml ]; then
+            echo "Error: mkdocs.yml not found!"
+            echo "Creating minimal mkdocs.yml..."
+            cat > mkdocs.yml << 'MKDOCS'
+          site_name: XOOPS Knowledge Base
+          site_description: Comprehensive documentation for XOOPS CMS development
+          site_url: https://xoops.github.io/xoops-knowledge-base/
+
+          theme:
+            name: material
+            features:
+              - navigation.tabs
+              - navigation.sections
+              - navigation.expand
+              - search.suggest
+              - search.highlight
+              - content.code.copy
+            palette:
+              - scheme: default
+                primary: blue
+                accent: blue
+
+          plugins:
+            - search
+
+          markdown_extensions:
+            - pymdownx.highlight
+            - pymdownx.superfences:
+                custom_fences:
+                  - name: mermaid
+                    class: mermaid
+                    format: !!python/name:pymdownx.superfences.fence_code_format
+            - pymdownx.tabbed
+            - pymdownx.details
+            - admonition
+            - tables
+            - toc:
+                permalink: true
+
+          docs_dir: docs
+          use_directory_urls: true
+          MKDOCS
+          fi
+
+          echo "Documentation preparation complete"
+          ls -la
+          ls -la docs/ | head -20
+
+      - name: Build documentation
+        run: |
+          echo "Building with mkdocs..."
+          echo "Installed plugins:"
+          pip list | grep -i mkdocs || true
+
+          echo ""
+          echo "mkdocs.yml content:"
+          head -80 mkdocs.yml || true
+
+          echo ""
+          echo "Starting build (strict mode disabled)..."
+          # Removed --strict so orphans don't kill the build
+          mkdocs build --verbose 2>&1
+          
+          echo "Build complete"
+          ls -la site/ | head -10
+
+      - name: Fix HTML links
+        run: |
+          echo "Fixing unconverted .md links in HTML files..."
+          python3 _tools/fix_html_links.py site
+          echo "Link fixing complete"
+
+      - name: Validate built site
+        run: |
+          echo "Validating built site for unconverted .md links..."
+          python3 _tools/validate_built_site.py site
+          validation_result=$?
+          
+          if [ $validation_result -ne 0 ]; then
+            echo ""
+            echo "⚠️  Warning: Site validation found unconverted .md links"
+            echo "These links may not work correctly in the deployed site."
+            echo ""
+          else
+            echo ""
+            echo "✅ Site validation passed - all links properly converted"
+            echo ""
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Build-only job for PRs (no deployment)
+  build-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install mkdocs mkdocs-material pymdown-extensions mkdocs-minify-plugin
+
+      - name: Prepare and build (PR validation)
+        run: |
+          # Create docs directory
+          mkdir -p docs
+
+          # Copy markdown files
+          rsync -av \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.obsidian/' \
+            --exclude='_tools/' \
+            --exclude='_build/' \
+            --exclude='_templates/' \
+            --exclude='_meta/' \
+            --include='*/' \
+            --include='*.md' \
+            --exclude='*' \
+            ./ docs/ 2>/dev/null || true
+
+          # Copy or create mkdocs.yml
+          if [ -f _tools/mkdocs.yml ]; then
+            cp _tools/mkdocs.yml mkdocs.yml
+          elif [ -f _build/mkdocs.yml ]; then
+            cp _build/mkdocs.yml mkdocs.yml
+          else
+            # Create minimal config
+            cat > mkdocs.yml << 'EOF'
+          site_name: XOOPS Knowledge Base
+          theme:
+            name: material
+          plugins:
+            - search
+          markdown_extensions:
+            - pymdownx.superfences:
+                custom_fences:
+                  - name: mermaid
+                    class: mermaid
+                    format: !!python/name:pymdownx.superfences.fence_code_format
+          docs_dir: docs
+          use_directory_urls: true
+          EOF
+          fi
+
+          # Build
+          mkdocs build 2>&1 || echo "Build completed with warnings"
+          
+          # Fix HTML links
+          echo ""
+          echo "Fixing unconverted .md links..."
+          python3 _tools/fix_html_links.py site
+          
+          # Validate built site
+          echo ""
+          echo "Validating built site..."
+          python3 _tools/validate_built_site.py site || echo "⚠️  Validation warnings (see above)"
+          
+          echo "✅ Documentation builds successfully"

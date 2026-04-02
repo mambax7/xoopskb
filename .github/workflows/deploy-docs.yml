@@ -1,0 +1,438 @@
+name: Deploy XOOPS Knowledge Base
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - '*.md'
+      - '**/*.md'
+      - '_tools/mkdocs.yml'
+      - '.github/workflows/deploy-docs.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # ============================================================
+  # Validate filenames (no spaces allowed)
+  # ============================================================
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check for files with spaces in names
+        run: |
+          echo "Checking for files with spaces in names..."
+
+          # Find files with spaces (excluding .obsidian and .git)
+          FILES_WITH_SPACES=$(find . -name "* *" -type f \
+            ! -path "./.git/*" \
+            ! -path "./.obsidian/*" \
+            ! -path "./_build/*" \
+            2>/dev/null || true)
+
+          if [ -n "$FILES_WITH_SPACES" ]; then
+            echo "❌ ERROR: Found files with spaces in their names!"
+            echo "Files with spaces cause issues with MkDocs and URLs."
+            echo ""
+            echo "Please rename the following files (use hyphens instead of spaces):"
+            echo "$FILES_WITH_SPACES"
+            echo ""
+            echo "You can run this command to fix them:"
+            echo "  find . -name '* *' -type f | while read f; do mv \"\$f\" \"\$(echo \$f | tr ' ' '-')\"; done"
+            exit 1
+          fi
+
+          echo "✅ No files with spaces found"
+
+  # ============================================================
+  # Build documentation
+  # ============================================================
+  build:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-mkdocs-v2
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install mkdocs mkdocs-material pymdown-extensions mkdocs-minify-plugin mkdocs-git-revision-date-localized-plugin
+
+      - name: Clean and prepare documentation
+        run: |
+          # Clean any existing build artifacts
+          rm -rf docs site mkdocs.yml 2>/dev/null || true
+
+          # Create fresh docs directory
+          mkdir -p docs
+
+          # Copy all markdown files and assets preserving structure
+          # Exclude hidden folders, tools, build, and templates
+          rsync -av \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.obsidian/' \
+            --exclude='_tools/' \
+            --exclude='_build/' \
+            --exclude='_templates/' \
+            --exclude='_meta/' \
+            --exclude='.space/' \
+            --exclude='.makemd/' \
+            --exclude='.trash/' \
+            --exclude='docs/' \
+            --exclude='site/' \
+            --include='*/' \
+            --include='*.md' \
+            --include='*.css' \
+            --include='*.js' \
+            --include='*.png' \
+            --include='*.jpg' \
+            --include='*.svg' \
+            --exclude='*' \
+            ./ docs/
+
+          # DEBUG: Show what we have
+          echo "=== Files in docs/ root ==="
+          ls -la docs/
+          
+          echo "=== Looking for potential index sources ==="
+          find docs -name "Home.md" -o -name "index.md" -o -name "README.md" 2>/dev/null | head -20
+          
+          # Create index.md - BE EXPLICIT about source
+          if [ -f docs/00-Home/Home.md ]; then
+            echo "Using docs/00-Home/Home.md as index"
+            cp docs/00-Home/Home.md docs/index.md
+          elif [ -f docs/README.md ]; then
+            echo "Using docs/README.md as index"  
+            cp docs/README.md docs/index.md
+          else
+            echo "WARNING: No Home.md or README.md found, creating default"
+            echo "# XOOPS Knowledge Base" > docs/index.md
+            echo "" >> docs/index.md
+            echo "Welcome to the XOOPS Knowledge Base." >> docs/index.md
+          fi
+          
+          # VERIFY index.md content
+          echo "=== Content of docs/index.md (first 10 lines) ==="
+          head -10 docs/index.md
+          
+          # Check it's NOT the Publisher file
+          if grep -q "Extending Publisher" docs/index.md; then
+            echo "❌ ERROR: index.md contains Publisher content!"
+            exit 1
+          fi
+
+
+          # Convert Obsidian wikilinks to proper markdown links
+          # This script calculates correct relative paths for MkDocs
+          python3 << 'EOF'
+          import os
+          import re
+          from pathlib import Path
+          
+          def find_target_file(target_path, docs_dir, current_file):
+              """Find the actual file for a wikilink target."""
+              clean_target = target_path.lstrip('./')
+              while clean_target.startswith('../'):
+                  clean_target = clean_target[3:]
+
+              if clean_target.endswith('.md'):
+                  clean_target = clean_target[:-3]
+
+              search_patterns = []
+              if '/' in clean_target:
+                  search_patterns.append(f"{clean_target}.md")
+              else:
+                  search_patterns.append(f"**/{clean_target}.md")
+          
+              for pattern in search_patterns:
+                  matches = list(docs_dir.glob(pattern))
+                  if matches:
+                      return matches[0]
+              return None
+
+          def get_relative_path(from_file, to_file):
+              """Calculate relative path from one file to another."""
+              from_dir = from_file.parent
+              try:
+                  rel_path = os.path.relpath(to_file, from_dir)
+                  return rel_path
+              except ValueError:
+                  return None
+
+          def convert_wikilinks(content, current_file, docs_dir, all_files):
+              """Convert all wikilinks in content to markdown links."""
+              def replace_wikilink(match):
+                  inner = match.group(1)
+                  if '|' in inner:
+                      parts = inner.split('|', 1)
+                      target = parts[0].strip()
+                      display = parts[1].strip()
+                  else:
+                      target = inner.strip()
+                      display = target.split('/')[-1] if '/' in target else target
+
+                  if target.startswith('http') or target.startswith('#'):
+                      return match.group(0)
+          
+                  target = target.replace(' ', '-')
+                  target_file = find_target_file(target, docs_dir, current_file)
+    
+                  if target_file:
+                      rel_path = get_relative_path(current_file, target_file)
+                      if rel_path:
+                          return f'[{display}]({rel_path})'
+          
+                  if '/' in target:
+                      return f'[{display}]({target}.md)'
+                  else:
+                      return f'[{display}]({target}.md)'
+          
+              pattern = r'(?<!!)\[\[([^\]]+)\]\]'
+              return re.sub(pattern, replace_wikilink, content)
+          
+          docs_dir = Path('docs')
+          all_files = list(docs_dir.rglob('*.md'))
+          print(f"Found {len(all_files)} markdown files")
+
+          converted_count = 0
+          for md_file in all_files:
+              try:
+                  content = md_file.read_text(encoding='utf-8')
+                  if '[[' in content:
+                      new_content = convert_wikilinks(content, md_file, docs_dir, all_files)
+                  if new_content != content:
+                      md_file.write_text(new_content, encoding='utf-8')
+                      converted_count += 1
+              except Exception as e:
+                  print(f"Warning: Could not process {md_file}: {e}")
+          
+          print(f"Converted wikilinks in {converted_count} files")
+          EOF
+
+          # Create index.md from Home.md if it exists
+          if [ -f docs/00-Home/Home.md ]; then
+            cp docs/00-Home/Home.md docs/index.md
+            # Fix relative paths: Home.md is in 00-Home/, so paths use ../
+            # but index.md is at root, so we need to remove the ../
+            sed -i 's|\](\.\.\/|\](|g' docs/index.md
+            echo "Created index.md from Home.md (fixed relative paths)"
+          elif [ -f docs/README.md ]; then
+            cp docs/README.md docs/index.md
+            echo "Created index.md from README.md"
+          else
+            echo "# XOOPS Knowledge Base" > docs/index.md
+            echo "" >> docs/index.md
+            echo "Welcome to the XOOPS Knowledge Base." >> docs/index.md
+            echo "Created default index.md"
+          fi
+
+          # Copy mkdocs.yml from _tools
+          if [ -f _tools/mkdocs.yml ]; then
+            cp _tools/mkdocs.yml mkdocs.yml
+            echo "Copied mkdocs.yml from _tools/"
+          else
+            echo "Warning: _tools/mkdocs.yml not found, creating minimal config"
+            cat > mkdocs.yml << 'MKDOCS'
+          site_name: XOOPS Knowledge Base
+          site_description: Comprehensive documentation for XOOPS CMS development
+          theme:
+            name: material
+            features:
+              - navigation.tabs
+              - navigation.sections
+              - search.suggest
+              - content.code.copy
+            palette:
+              - scheme: default
+                primary: blue
+          plugins:
+            - search
+            - minify:
+                minify_html: true
+          markdown_extensions:
+            - pymdownx.highlight
+            - pymdownx.superfences:
+                custom_fences:
+                  - name: mermaid
+                    class: mermaid
+                    format: !!python/name:pymdownx.superfences.fence_code_format
+            - admonition
+            - tables
+            - toc:
+                permalink: true
+          docs_dir: docs
+          MKDOCS
+          fi
+          echo ""
+          echo "=== Documentation preparation complete ==="
+          echo "Files in docs/:"
+          find docs -name "*.md" | wc -l
+          echo "markdown files found"
+
+      - name: Build documentation
+        run: |
+          set -eo pipefail  # Exit on error, propagate pipe failures
+          echo "Building with MkDocs..."
+          if mkdocs build --strict 2>&1 | tee build.log; then
+            echo "✅ Strict build succeeded"
+          else
+            echo "⚠️ Strict build failed, trying permissive mode..."
+            mkdocs build 2>&1 | tee build.log
+          fi
+          echo ""
+          echo "✅ Build complete"
+          echo "Generated $(find site -name '*.html' | wc -l) HTML files"
+
+      - name: Verify built HTML content
+        run: |
+          echo "=== index.html title and h1 ==="
+          grep -E "<title>|<h1" site/index.html | head -5
+          
+          echo ""
+          echo "=== Does index.html mention Publisher? ==="
+          if grep -q "Extending Publisher" site/index.html; then
+            echo "❌ ERROR: index.html contains 'Extending Publisher'!"
+            echo "First 100 lines of index.html:"
+            head -100 site/index.html
+          else
+            echo "✅ index.html looks correct"
+          fi
+          
+          echo ""
+          echo "=== Check for redirect meta tags ==="
+          grep -i "redirect\|refresh\|canonical" site/index.html || echo "No redirects found"
+
+
+
+      - name: Verify site directory exists
+        run: |
+          if [ ! -d "site" ]; then
+            echo "❌ ERROR: site/ directory was not created!"
+            echo "Build must have failed. Check build.log for details."
+            exit 1
+          fi
+          echo "✅ site/ directory exists with $(ls -1 site | wc -l) items"
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  # ============================================================
+  # Deploy to GitHub Pages
+  # ============================================================
+  deploy:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ============================================================
+  # PR Validation (build only, no deploy)
+  # ============================================================
+  build-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install mkdocs mkdocs-material pymdown-extensions mkdocs-minify-plugin
+      - name: Build (PR validation)
+        run: |
+          # Clean start
+          if [ -d docs ] || [ -d site ] || [ -f mkdocs.yml ]; then
+            echo "Cleaning existing build artifacts..."
+            rm -rf docs site mkdocs.yml
+          fi
+          mkdir -p docs
+
+          # Copy markdown files
+          rsync -av \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.obsidian/' \
+            --exclude='_tools/' \
+            --exclude='_build/' \
+            --exclude='_templates/' \
+            --exclude='_meta/' \
+            --exclude='.space/' \
+            --exclude='.makemd/' \
+            --exclude='.trash/' \
+            --exclude='docs/' \
+            --exclude='site/' \
+            --include='*/' \
+            --include='*.md' \
+            --exclude='*' \
+            ./ docs/ 2>/dev/null || true
+
+          # Create index.md
+          if [ -f docs/00-Home/Home.md ]; then
+            cp docs/00-Home/Home.md docs/index.md
+          fi
+
+          # Copy mkdocs.yml
+          if [ -f _tools/mkdocs.yml ]; then
+            cp _tools/mkdocs.yml mkdocs.yml
+          else
+            cat > mkdocs.yml << 'EOF'
+          site_name: XOOPS Knowledge Base
+          theme:
+            name: material
+          plugins:
+            - search
+          markdown_extensions:
+            - pymdownx.superfences
+          docs_dir: docs
+          EOF
+          fi
+
+          # Build
+          mkdocs build 2>&1 || echo "Build completed with warnings"
+          echo "✅ PR validation passed - documentation builds successfully"

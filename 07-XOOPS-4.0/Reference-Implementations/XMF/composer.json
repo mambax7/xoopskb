@@ -1,0 +1,101 @@
+{
+    "name": "xoops/xmf-components",
+    "description": "XMF Reference Implementations - ULID, Slug, and EntityId components for XOOPS",
+    "type": "library",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "XOOPS Development Team",
+            "email": "dev@xoops.org",
+            "homepage": "https://xoops.org"
+        }
+    ],
+    "homepage": "https://github.com/XOOPS/XMF",
+    "support": {
+        "issues": "https://github.com/XOOPS/XMF/issues",
+        "source": "https://github.com/XOOPS/XMF",
+        "docs": "https://xoops.gitbook.io/xmf-cookbook"
+    },
+    "keywords": [
+        "xoops",
+        "xmf",
+        "ulid",
+        "slug",
+        "entity-id",
+        "value-object",
+        "ddd"
+    ],
+    "require": {
+        "php": ">=8.4",
+        "ext-mbstring": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0",
+        "phpstan/phpstan": "^1.10",
+        "phpstan/phpstan-strict-rules": "^1.5",
+        "friendsofphp/php-cs-fixer": "^3.40",
+        "vimeo/psalm": "^5.0",
+        "infection/infection": "^0.27"
+    },
+    "suggest": {
+        "ext-intl": "For enhanced Unicode transliteration in Slug component"
+    },
+    "autoload": {
+        "psr-4": {
+            "Xmf\\": ""
+        },
+        "exclude-from-classmap": [
+            "/Tests/",
+            "/Benchmarks/"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Xmf\\Tests\\": "Tests/",
+            "Xmf\\Benchmarks\\": "Benchmarks/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage",
+        "test:unit": "phpunit --testsuite=Ulid,Slug",
+        "analyse": "phpstan analyse --level=max",
+        "cs:check": "php-cs-fixer fix --dry-run --diff",
+        "cs:fix": "php-cs-fixer fix",
+        "psalm": "psalm --show-info=true",
+        "benchmark": "php Benchmarks/IdBenchmark.php",
+        "benchmark:db": "php Benchmarks/IdBenchmark.php --database",
+        "ci": [
+            "@cs:check",
+            "@analyse",
+            "@test"
+        ]
+    },
+    "scripts-descriptions": {
+        "test": "Run all PHPUnit tests",
+        "test:coverage": "Run tests with HTML coverage report",
+        "test:unit": "Run only unit tests for Ulid and Slug",
+        "analyse": "Run PHPStan static analysis",
+        "cs:check": "Check code style without fixing",
+        "cs:fix": "Fix code style issues",
+        "psalm": "Run Psalm static analysis",
+        "benchmark": "Run ID generation benchmarks",
+        "benchmark:db": "Run benchmarks including database tests",
+        "ci": "Run all CI checks (code style, analysis, tests)"
+    },
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "optimize-autoloader": true,
+        "allow-plugins": {
+            "infection/extension-installer": true
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "2.0.x-dev"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

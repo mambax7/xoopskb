@@ -1,0 +1,72 @@
+# PHPStan Configuration for XOOPS 4.0 Modules
+# https://phpstan.org/config-reference
+
+includes:
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    # Uncomment if using PHPUnit
+    # - vendor/phpstan/phpstan-phpunit/extension.neon
+
+parameters:
+    # Analysis level (0-9, 9 is strictest)
+    level: 8
+
+    # Paths to analyze
+    paths:
+        - Domain
+        - Application
+        - Infrastructure
+        - Presentation
+
+    # Paths to exclude
+    excludePaths:
+        - tests
+        - vendor
+
+    # Treat phpdoc types as certain
+    treatPhpDocTypesAsCertain: false
+
+    # Check missing typehints
+    checkMissingIterableValueType: true
+    checkGenericClassInNonGenericObjectType: true
+
+    # Report unused parameters
+    reportUnmatchedIgnoredErrors: true
+
+    # XOOPS-specific configurations
+    ignoreErrors:
+        # Allow XoopsDatabase usage (legacy)
+        - '#Parameter \#1 .* of class .* expects XoopsDatabase#'
+
+        # Allow XOOPS global functions
+        - '#Function xoops_getModuleHandler not found#'
+        - '#Function redirect_header not found#'
+
+    # Bootstrap files for autoloading
+    bootstrapFiles:
+        - vendor/autoload.php
+
+    # Stub files for XOOPS classes
+    stubFiles:
+        # Create these if needed for type hints
+        # - stubs/XoopsObject.stub
+        # - stubs/XoopsDatabase.stub
+
+    # Parallel processing
+    parallel:
+        maximumNumberOfProcesses: 4
+
+    # Type coverage
+    typeAliases:
+        # Define type aliases for complex types
+        EntityCollection: 'array<int, object>'
+
+    # Cognitive complexity (optional, requires extension)
+    # cognitiveComplexityThreshold: 8
+
+rules:
+    # Custom rules can be added here
+    # - MyCustomRule
+
+services:
+    # Custom error formatters
+    # - class: MyErrorFormatter

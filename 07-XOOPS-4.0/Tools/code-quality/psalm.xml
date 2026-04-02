@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<!--
+  Psalm Configuration for XOOPS 4.0 Modules
+  https://psalm.dev/docs/configuration/
+-->
+<psalm
+    errorLevel="2"
+    resolveFromConfigFile="true"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+    cacheDirectory=".psalm-cache"
+    findUnusedBaselineEntry="true"
+    findUnusedCode="true"
+    findUnusedVariablesAndParams="true"
+    reportMixedIssues="true"
+>
+    <projectFiles>
+        <directory name="Domain"/>
+        <directory name="Application"/>
+        <directory name="Infrastructure"/>
+        <directory name="Presentation"/>
+        <ignoreFiles>
+            <directory name="vendor"/>
+            <directory name="tests"/>
+        </ignoreFiles>
+    </projectFiles>
+
+    <!-- PHP Version -->
+    <phpVersion>8.4</phpVersion>
+
+    <!-- Strict Mode Settings -->
+    <strictBinaryOperands value="true"/>
+
+    <!-- Enable Plugins -->
+    <plugins>
+        <!-- Uncomment if using PHPUnit -->
+        <!-- <pluginClass class="Psalm\PhpUnitPlugin\Plugin"/> -->
+    </plugins>
+
+    <!-- Issue Handlers -->
+    <issueHandlers>
+        <!-- XOOPS Legacy Compatibility -->
+        <UndefinedFunction>
+            <errorLevel type="suppress">
+                <referencedFunction name="xoops_getModuleHandler"/>
+                <referencedFunction name="redirect_header"/>
+                <referencedFunction name="xoops_load"/>
+            </errorLevel>
+        </UndefinedFunction>
+
+        <UndefinedClass>
+            <errorLevel type="suppress">
+                <referencedClass name="XoopsDatabase"/>
+                <referencedClass name="XoopsObject"/>
+                <referencedClass name="XoopsObjectHandler"/>
+                <referencedClass name="Criteria"/>
+                <referencedClass name="CriteriaCompo"/>
+            </errorLevel>
+        </UndefinedClass>
+
+        <!-- Allow Undefined Global Variables (XOOPS globals) -->
+        <UndefinedGlobalVariable>
+            <errorLevel type="suppress">
+                <referencedVariable name="$xoopsDB"/>
+                <referencedVariable name="$xoopsUser"/>
+                <referencedVariable name="$xoopsTpl"/>
+                <referencedVariable name="$xoopsConfig"/>
+            </errorLevel>
+        </UndefinedGlobalVariable>
+
+        <!-- Mixed Type Issues (can be strict if needed) -->
+        <MixedAssignment errorLevel="info"/>
+        <MixedArgument errorLevel="info"/>
+        <MixedReturnStatement errorLevel="info"/>
+        <MixedInferredReturnType errorLevel="info"/>
+
+        <!-- Property Issues -->
+        <PropertyNotSetInConstructor>
+            <errorLevel type="suppress">
+                <directory name="Domain/Entity"/>
+            </errorLevel>
+        </PropertyNotSetInConstructor>
+
+        <!-- Unused Code (warning only) -->
+        <UnusedClass errorLevel="info"/>
+        <UnusedMethod errorLevel="info"/>
+        <UnusedProperty errorLevel="info"/>
+        <PossiblyUnusedMethod errorLevel="info"/>
+        <PossiblyUnusedProperty errorLevel="info"/>
+
+        <!-- Less Strict Rules -->
+        <MissingConstructor errorLevel="suppress"/>
+        <PossiblyNullArgument errorLevel="info"/>
+        <PossiblyNullReference errorLevel="info"/>
+    </issueHandlers>
+
+    <!-- Stub Files for XOOPS Classes -->
+    <stubs>
+        <!-- Create these stub files if type information is needed -->
+        <!-- <file name="stubs/XoopsObject.phpstub"/> -->
+        <!-- <file name="stubs/XoopsDatabase.phpstub"/> -->
+    </stubs>
+
+    <!-- Global Types -->
+    <globals>
+        <var name="xoopsDB" type="XoopsDatabase"/>
+        <var name="xoopsUser" type="XoopsUser|null"/>
+        <var name="xoopsTpl" type="Smarty"/>
+    </globals>
+</psalm>

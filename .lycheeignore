@@ -1,0 +1,60 @@
+# Lychee Link Checker Ignore File
+# https://lychee.cli.rs/
+
+# Obsidian internal files and plugins (exclude entire directory)
+.obsidian/**
+.obsidian/*
+**/.obsidian/**
+
+# Obsidian plugin-specific URLs that may be unreachable
+*rajgoel.github.io*
+*reveal.js*
+*reveal.js-demos*
+
+# Local development URLs
+localhost
+127.0.0.1
+
+# Example/placeholder URLs
+example.com
+example.org
+
+# URLs that require authentication
+*xoops.org/modules/profile/*
+
+# Archive URLs that may be slow or rate-limited
+*web.archive.org*
+
+# Social media URLs that block bots
+*twitter.com*
+*x.com*
+*facebook.com*
+*linkedin.com*
+
+# Package manager URLs that may rate-limit
+*packagist.org/packages/*
+
+# Documentation sites that block automated scrapers
+*dev.mysql.com*
+*docs.oracle.com*
+
+# XOOPS community sites that may be down or have DNS issues
+*xoops.jp*
+*frxoops.org*
+
+# Hypothetical/example module repositories
+*github.com/xoops/goldstandard*
+
+# XOOPS forums path (use newbb module path instead)
+*xoops.org/forums*
+
+# OWASP cheat sheets (may have URL changes)
+*cheatsheetseries.owasp.org*
+
+# Build output directories (contain transformed links)
+_build/**
+_build/*
+**/_build/**
+site/**
+site/*
+**/site/**

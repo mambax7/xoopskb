@@ -1,0 +1,269 @@
+name: Validate Documentation
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - 'feature/**'
+      - 'fix/**'
+    paths:
+      - '**/*.md'
+      - '_tools/validate_*.py'
+      - '.github/workflows/validate-docs.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - '**/*.md'
+      - '_tools/validate_*.py'
+  workflow_dispatch:
+  schedule:
+    # Run weekly to catch any issues
+    - cron: '0 0 * * 0'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate-diagrams:
+    name: Validate Mermaid Diagrams
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run diagram validator
+        id: diagrams
+        run: |
+          echo "## 📊 Mermaid Diagram Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          python3 _tools/validate_diagrams.py --stats . 2>&1 | tee validation_output.txt
+
+          # Extract stats for summary
+          TOTAL=$(grep "Total diagrams:" validation_output.txt | awk '{print $3}')
+          ERRORS=$(grep "Errors:" validation_output.txt | awk '{print $2}')
+          WARNINGS=$(grep "Warnings:" validation_output.txt | awk '{print $2}')
+
+          echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Total Diagrams | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+          echo "| Errors | $ERRORS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Warnings | $WARNINGS |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Diagram validation failed with errors**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          elif [ "$WARNINGS" -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Diagram validation passed with warnings**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **All diagrams are valid**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload validation results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diagram-validation-results
+          path: validation_output.txt
+
+  validate-links:
+    name: Validate Internal Links
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run link validator
+        id: links
+        continue-on-error: true
+        run: |
+          echo "## 🔗 Link Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          python3 _tools/validate_links.py --orphans . 2>&1 | tee link_validation.txt
+
+          # Check for broken links (but don't fail the build)
+          if grep -q "Broken links:" link_validation.txt; then
+            BROKEN=$(grep "Broken links:" link_validation.txt | awk '{print $3}')
+            VALID=$(grep "Valid links:" link_validation.txt | awk '{print $3}')
+            TOTAL=$(grep "Total links checked:" link_validation.txt | awk '{print $4}')
+
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Total Links | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+            echo "| Valid | $VALID |" >> $GITHUB_STEP_SUMMARY
+            echo "| Broken | $BROKEN |" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$BROKEN" -gt 0 ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "⚠️ **Some internal links may be broken** (see artifact for details)" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "✅ **All links are valid**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload validation results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: link-validation-results
+          path: link_validation.txt
+
+  check-frontmatter:
+    name: Check YAML Frontmatter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate frontmatter
+        run: |
+          echo "## 📝 Frontmatter Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          python3 << 'EOF'
+          import os
+          import re
+          import yaml
+          from pathlib import Path
+
+          REQUIRED_FIELDS = ['title', 'description']
+          RECOMMENDED_FIELDS = ['created', 'updated', 'tags']
+
+          errors = []
+          warnings = []
+          valid_count = 0
+          total_count = 0
+
+          for md_file in Path('.').rglob('*.md'):
+              # Skip hidden directories and special folders
+              if any(part.startswith('.') for part in md_file.parts):
+                  continue
+              if '_tools' in md_file.parts or '_build' in md_file.parts:
+                  continue
+
+              total_count += 1
+              content = md_file.read_text(encoding='utf-8')
+
+              # Check for YAML frontmatter
+              if not content.startswith('---'):
+                  warnings.append(f"{md_file}: Missing frontmatter")
+                  continue
+
+              # Extract frontmatter
+              match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
+              if not match:
+                  errors.append(f"{md_file}: Invalid frontmatter format")
+                  continue
+
+              try:
+                  frontmatter = yaml.safe_load(match.group(1))
+                  if frontmatter is None:
+                      warnings.append(f"{md_file}: Empty frontmatter")
+                      continue
+
+                  # Check required fields
+                  missing_required = [f for f in REQUIRED_FIELDS if f not in frontmatter]
+                  if missing_required:
+                      warnings.append(f"{md_file}: Missing recommended fields: {', '.join(missing_required)}")
+                  else:
+                      valid_count += 1
+
+              except yaml.YAMLError as e:
+                  errors.append(f"{md_file}: YAML parse error - {e}")
+
+          print(f"Total files: {total_count}")
+          print(f"Valid frontmatter: {valid_count}")
+          print(f"Errors: {len(errors)}")
+          print(f"Warnings: {len(warnings)}")
+
+          if errors:
+              print("\nErrors:")
+              for e in errors:
+                  print(f"  ❌ {e}")
+
+          if warnings:
+              print("\nWarnings:")
+              for w in warnings[:10]:  # Limit output
+                  print(f"  ⚠️ {w}")
+              if len(warnings) > 10:
+                  print(f"  ... and {len(warnings) - 10} more")
+
+          # Write to summary
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write(f"| Metric | Count |\n")
+              f.write(f"|--------|-------|\n")
+              f.write(f"| Total Files | {total_count} |\n")
+              f.write(f"| Valid Frontmatter | {valid_count} |\n")
+              f.write(f"| Errors | {len(errors)} |\n")
+              f.write(f"| Warnings | {len(warnings)} |\n")
+              f.write("\n")
+              if len(errors) == 0:
+                  f.write("✅ **No frontmatter errors**\n")
+              else:
+                  f.write("❌ **Frontmatter errors found**\n")
+
+          exit(1 if errors else 0)
+          EOF
+
+  summary:
+    name: Validation Summary
+    runs-on: ubuntu-latest
+    needs: [validate-diagrams, validate-links, check-frontmatter]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "# 📋 Documentation Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.validate-diagrams.result }}" == "success" ]; then
+            echo "| Mermaid Diagrams | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Mermaid Diagrams | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.validate-links.result }}" == "success" ]; then
+            echo "| Internal Links | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Internal Links | ⚠️ Warnings |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.check-frontmatter.result }}" == "success" ]; then
+            echo "| Frontmatter | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Frontmatter | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check overall status
+        if: needs.validate-diagrams.result == 'failure'
+        run: |
+          echo "Validation failed - see individual job results for details"
+          exit 1

@@ -1,0 +1,657 @@
+{
+  // ==========================================================================
+  // XOOPS 4.0 Code Snippets for VS Code
+  // ==========================================================================
+  //
+  // Installation:
+  // 1. Copy this file to:
+  //    - Windows: %APPDATA%\Code\User\snippets\
+  //    - macOS: ~/Library/Application Support/Code/User/snippets/
+  //    - Linux: ~/.config/Code/User/snippets/
+  // 2. Or add to workspace: .vscode/xoops-4.0.code-snippets
+  //
+  // Usage: Type the prefix and press Tab to expand
+  // ==========================================================================
+
+  // --------------------------------------------------------------------------
+  // Value Objects
+  // --------------------------------------------------------------------------
+
+  "XOOPS Value Object": {
+    "prefix": "xvo",
+    "description": "Create a XOOPS 4.0 value object",
+    "body": [
+      "<?php",
+      "",
+      "declare(strict_types=1);",
+      "",
+      "namespace ${1:Module}\\\\Domain\\\\ValueObject;",
+      "",
+      "use ${1:Module}\\\\Domain\\\\Exception\\\\Invalid${2:Name};",
+      "",
+      "/**",
+      " * ${2:Name} - ${3:Description}.",
+      " */",
+      "final readonly class ${2:Name} implements \\\\Stringable, \\\\JsonSerializable",
+      "{",
+      "    private const int MIN_LENGTH = ${4:1};",
+      "    private const int MAX_LENGTH = ${5:200};",
+      "",
+      "    private function __construct(",
+      "        private string \\$value",
+      "    ) {}",
+      "",
+      "    public static function create(string \\$value): self",
+      "    {",
+      "        \\$value = trim(\\$value);",
+      "",
+      "        if (mb_strlen(\\$value) < self::MIN_LENGTH) {",
+      "            throw Invalid${2:Name}::tooShort(self::MIN_LENGTH);",
+      "        }",
+      "",
+      "        if (mb_strlen(\\$value) > self::MAX_LENGTH) {",
+      "            throw Invalid${2:Name}::tooLong(self::MAX_LENGTH);",
+      "        }",
+      "",
+      "        return new self(\\$value);",
+      "    }",
+      "",
+      "    public function toString(): string",
+      "    {",
+      "        return \\$this->value;",
+      "    }",
+      "",
+      "    public function equals(self \\$other): bool",
+      "    {",
+      "        return \\$this->value === \\$other->value;",
+      "    }",
+      "",
+      "    public function __toString(): string",
+      "    {",
+      "        return \\$this->value;",
+      "    }",
+      "",
+      "    public function jsonSerialize(): string",
+      "    {",
+      "        return \\$this->value;",
+      "    }",
+      "}",
+      ""
+    ]
+  },
+
+  "XOOPS Entity ID": {
+    "prefix": "xid",
+    "description": "Create a XOOPS 4.0 entity ID value object",
+    "body": [
+      "<?php",
+      "",
+      "declare(strict_types=1);",
+      "",
+      "namespace ${1:Module}\\\\Domain\\\\ValueObject;",
+      "",
+      "use Xmf\\\\Ulid;",
+      "use ${1:Module}\\\\Domain\\\\Exception\\\\Invalid${2:Entity}Id;",
+      "",
+      "/**",
+      " * ${2:Entity}Id - Unique identifier for a ${2:Entity} entity.",
+      " */",
+      "final readonly class ${2:Entity}Id implements \\\\Stringable, \\\\JsonSerializable",
+      "{",
+      "    private function __construct(",
+      "        private Ulid \\$ulid",
+      "    ) {}",
+      "",
+      "    public static function generate(): self",
+      "    {",
+      "        return new self(Ulid::generate());",
+      "    }",
+      "",
+      "    public static function fromString(string \\$id): self",
+      "    {",
+      "        if (!Ulid::isValid(\\$id)) {",
+      "            throw Invalid${2:Entity}Id::invalidFormat(\\$id);",
+      "        }",
+      "",
+      "        return new self(Ulid::fromString(\\$id));",
+      "    }",
+      "",
+      "    public function toString(): string",
+      "    {",
+      "        return \\$this->ulid->toString();",
+      "    }",
+      "",
+      "    public function getTimestamp(): \\\\DateTimeImmutable",
+      "    {",
+      "        return \\$this->ulid->getTimestamp();",
+      "    }",
+      "",
+      "    public function equals(self \\$other): bool",
+      "    {",
+      "        return \\$this->ulid->equals(\\$other->ulid);",
+      "    }",
+      "",
+      "    public function __toString(): string",
+      "    {",
+      "        return \\$this->toString();",
+      "    }",
+      "",
+      "    public function jsonSerialize(): string",
+      "    {",
+      "        return \\$this->toString();",
+      "    }",
+      "}",
+      ""
+    ]
+  },
+
+  "XOOPS Status Enum": {
+    "prefix": "xstatus",
+    "description": "Create a XOOPS 4.0 status enum",
+    "body": [
+      "<?php",
+      "",
+      "declare(strict_types=1);",
+      "",
+      "namespace ${1:Module}\\\\Domain\\\\ValueObject;",
+      "",
+      "/**",
+      " * ${2:Entity}Status - Lifecycle status of a ${2:Entity}.",
+      " */",
+      "enum ${2:Entity}Status: string",
+      "{",
+      "    case Draft = 'draft';",
+      "    case Published = 'published';",
+      "    case Archived = 'archived';",
+      "",
+      "    public function allowedTransitions(): array",
+      "    {",
+      "        return match (\\$this) {",
+      "            self::Draft => [self::Published, self::Archived],",
+      "            self::Published => [self::Archived],",
+      "            self::Archived => [self::Draft],",
+      "        };",
+      "    }",
+      "",
+      "    public function canTransitionTo(self \\$target): bool",
+      "    {",
+      "        return in_array(\\$target, \\$this->allowedTransitions(), true);",
+      "    }",
+      "",
+      "    public function label(): string",
+      "    {",
+      "        return match (\\$this) {",
+      "            self::Draft => 'Draft',",
+      "            self::Published => 'Published',",
+      "            self::Archived => 'Archived',",
+      "        };",
+      "    }",
+      "}",
+      ""
+    ]
+  },
+
+  // --------------------------------------------------------------------------
+  // Entities
+  // --------------------------------------------------------------------------
+
+  "XOOPS Entity": {
+    "prefix": "xentity",
+    "description": "Create a XOOPS 4.0 domain entity",
+    "body": [
+      "<?php",
+      "",
+      "declare(strict_types=1);",
+      "",
+      "namespace ${1:Module}\\\\Domain\\\\Entity;",
+      "",
+      "use ${1:Module}\\\\Domain\\\\ValueObject\\\\${2:Entity}Id;",
+      "use ${1:Module}\\\\Domain\\\\ValueObject\\\\${2:Entity}Title;",
+      "use ${1:Module}\\\\Domain\\\\ValueObject\\\\${2:Entity}Content;",
+      "use ${1:Module}\\\\Domain\\\\ValueObject\\\\${2:Entity}Status;",
+      "",
+      "/**",
+      " * ${2:Entity} - ${3:Description}.",
+      " */",
+      "final class ${2:Entity}",
+      "{",
+      "    private \\\\DateTimeImmutable \\$updatedAt;",
+      "",
+      "    private function __construct(",
+      "        private readonly ${2:Entity}Id \\$id,",
+      "        private readonly int \\$authorId,",
+      "        private ${2:Entity}Title \\$title,",
+      "        private ${2:Entity}Content \\$content,",
+      "        private ${2:Entity}Status \\$status,",
+      "        private readonly \\\\DateTimeImmutable \\$createdAt",
+      "    ) {",
+      "        \\$this->updatedAt = \\$createdAt;",
+      "    }",
+      "",
+      "    public static function create(",
+      "        int \\$authorId,",
+      "        ${2:Entity}Title \\$title,",
+      "        ${2:Entity}Content \\$content",
+      "    ): self {",
+      "        return new self(",
+      "            id: ${2:Entity}Id::generate(),",
+      "            authorId: \\$authorId,",
+      "            title: \\$title,",
+      "            content: \\$content,",
+      "            status: ${2:Entity}Status::Draft,",
+      "            createdAt: new \\\\DateTimeImmutable()",
+      "        );",
+      "    }",
+      "",
+      "    public static function reconstitute(",
+      "        ${2:Entity}Id \\$id,",
+      "        int \\$authorId,",
+      "        ${2:Entity}Title \\$title,",
+      "        ${2:Entity}Content \\$content,",
+      "        ${2:Entity}Status \\$status,",
+      "        \\\\DateTimeImmutable \\$createdAt,",
+      "        \\\\DateTimeImmutable \\$updatedAt",
+      "    ): self {",
+      "        \\$entity = new self(\\$id, \\$authorId, \\$title, \\$content, \\$status, \\$createdAt);",
+      "        \\$entity->updatedAt = \\$updatedAt;",
+      "        return \\$entity;",
+      "    }",
+      "",
+      "    public function getId(): ${2:Entity}Id { return \\$this->id; }",
+      "    public function getAuthorId(): int { return \\$this->authorId; }",
+      "    public function getTitle(): ${2:Entity}Title { return \\$this->title; }",
+      "    public function getContent(): ${2:Entity}Content { return \\$this->content; }",
+      "    public function getStatus(): ${2:Entity}Status { return \\$this->status; }",
+      "    public function getCreatedAt(): \\\\DateTimeImmutable { return \\$this->createdAt; }",
+      "    public function getUpdatedAt(): \\\\DateTimeImmutable { return \\$this->updatedAt; }",
+      "",
+      "    public function updateTitle(${2:Entity}Title \\$newTitle): void",
+      "    {",
+      "        if (!\\$this->title->equals(\\$newTitle)) {",
+      "            \\$this->title = \\$newTitle;",
+      "            \\$this->touch();",
+      "        }",
+      "    }",
+      "",
+      "    private function touch(): void",
+      "    {",
+      "        \\$this->updatedAt = new \\\\DateTimeImmutable();",
+      "    }",
+      "}",
+      ""
+    ]
+  },
+
+  // --------------------------------------------------------------------------
+  // Repository
+  // --------------------------------------------------------------------------
+
+  "XOOPS Repository Interface": {
+    "prefix": "xrepo",
+    "description": "Create a XOOPS 4.0 repository interface",
+    "body": [
+      "<?php",
+      "",
+      "declare(strict_types=1);",
+      "",
+      "namespace ${1:Module}\\\\Domain\\\\Repository;",
+      "",
+      "use ${1:Module}\\\\Domain\\\\Entity\\\\${2:Entity};",
+      "use ${1:Module}\\\\Domain\\\\ValueObject\\\\${2:Entity}Id;",
+      "",
+      "/**",
+      " * ${2:Entity}RepositoryInterface - Persistence contract.",
+      " */",
+      "interface ${2:Entity}RepositoryInterface",
+      "{",
+      "    public function findById(${2:Entity}Id \\$id): ${2:Entity};",
+      "    public function findByIdOrNull(${2:Entity}Id \\$id): ?${2:Entity};",
+      "    public function findByAuthorId(int \\$authorId): array;",
+      "    public function save(${2:Entity} \\$entity): void;",
+      "    public function delete(${2:Entity} \\$entity): void;",
+      "    public function exists(${2:Entity}Id \\$id): bool;",
+      "}",
+      ""
+    ]
+  },
+
+  // --------------------------------------------------------------------------
+  // Exceptions
+  // --------------------------------------------------------------------------
+
+  "XOOPS Domain Exception": {
+    "prefix": "xexception",
+    "description": "Create a XOOPS 4.0 domain exception",
+    "body": [
+      "<?php",
+      "",
+      "declare(strict_types=1);",
+      "",
+      "namespace ${1:Module}\\\\Domain\\\\Exception;",
+      "",
+      "/**",
+      " * ${2:Exception} - ${3:Description}.",
+      " */",
+      "final class ${2:Exception} extends ${4:DomainException}",
+      "{",
+      "    protected function __construct(",
+      "        string \\$message,",
+      "        public readonly string \\$errorCode,",
+      "        public readonly array \\$context = []",
+      "    ) {",
+      "        parent::__construct(\\$message);",
+      "    }",
+      "",
+      "    public static function ${5:withReason}(${6:string \\$reason}): self",
+      "    {",
+      "        return new self(",
+      "            message: \"${7:Error message}: {\\$reason}\",",
+      "            errorCode: '${8:ERROR_CODE}',",
+      "            context: ['${9:key}' => \\$reason]",
+      "        );",
+      "    }",
+      "",
+      "    public function toArray(): array",
+      "    {",
+      "        return [",
+      "            'error' => \\$this->errorCode,",
+      "            'message' => \\$this->message,",
+      "            'context' => \\$this->context,",
+      "        ];",
+      "    }",
+      "}",
+      ""
+    ]
+  },
+
+  // --------------------------------------------------------------------------
+  // Commands
+  // --------------------------------------------------------------------------
+
+  "XOOPS Command": {
+    "prefix": "xcmd",
+    "description": "Create a XOOPS 4.0 command",
+    "body": [
+      "<?php",
+      "",
+      "declare(strict_types=1);",
+      "",
+      "namespace ${1:Module}\\\\Application\\\\Command;",
+      "",
+      "/**",
+      " * ${2:Action}${3:Entity}Command - Request to ${4:action} a ${3:Entity}.",
+      " */",
+      "final readonly class ${2:Action}${3:Entity}Command",
+      "{",
+      "    public function __construct(",
+      "        public ${5:int \\$userId},",
+      "        public ${6:string \\$title}${7:,}",
+      "        ${8:public string \\$content = ''}",
+      "    ) {}",
+      "}",
+      ""
+    ]
+  },
+
+  "XOOPS Command Handler": {
+    "prefix": "xhandler",
+    "description": "Create a XOOPS 4.0 command handler",
+    "body": [
+      "<?php",
+      "",
+      "declare(strict_types=1);",
+      "",
+      "namespace ${1:Module}\\\\Application\\\\Command;",
+      "",
+      "use ${1:Module}\\\\Domain\\\\Entity\\\\${2:Entity};",
+      "use ${1:Module}\\\\Domain\\\\Repository\\\\${2:Entity}RepositoryInterface;",
+      "",
+      "/**",
+      " * ${3:Action}${2:Entity}Handler - Executes the ${3:action} use case.",
+      " */",
+      "final readonly class ${3:Action}${2:Entity}Handler",
+      "{",
+      "    public function __construct(",
+      "        private ${2:Entity}RepositoryInterface \\$repository",
+      "    ) {}",
+      "",
+      "    public function handle(${3:Action}${2:Entity}Command \\$command): ${2:Entity}",
+      "    {",
+      "        ${0:// Implementation}",
+      "    }",
+      "}",
+      ""
+    ]
+  },
+
+  // --------------------------------------------------------------------------
+  // Queries
+  // --------------------------------------------------------------------------
+
+  "XOOPS Query": {
+    "prefix": "xquery",
+    "description": "Create a XOOPS 4.0 query",
+    "body": [
+      "<?php",
+      "",
+      "declare(strict_types=1);",
+      "",
+      "namespace ${1:Module}\\\\Application\\\\Query;",
+      "",
+      "/**",
+      " * ${2:Get}${3:Entity}Query - Request to retrieve ${4:a} ${3:Entity}.",
+      " */",
+      "final readonly class ${2:Get}${3:Entity}Query",
+      "{",
+      "    public function __construct(",
+      "        public ${5:string \\$id},",
+      "        public ${6:int \\$userId}",
+      "    ) {}",
+      "}",
+      ""
+    ]
+  },
+
+  // --------------------------------------------------------------------------
+  // PHPUnit Tests
+  // --------------------------------------------------------------------------
+
+  "XOOPS Test Class": {
+    "prefix": "xtest",
+    "description": "Create a XOOPS 4.0 PHPUnit test class",
+    "body": [
+      "<?php",
+      "",
+      "declare(strict_types=1);",
+      "",
+      "namespace ${1:Module}\\\\Tests\\\\Unit\\\\${2:Layer};",
+      "",
+      "use PHPUnit\\\\Framework\\\\TestCase;",
+      "use PHPUnit\\\\Framework\\\\Attributes\\\\Test;",
+      "use PHPUnit\\\\Framework\\\\Attributes\\\\CoversClass;",
+      "",
+      "#[CoversClass(${3:ClassName}::class)]",
+      "final class ${3:ClassName}Test extends TestCase",
+      "{",
+      "    #[Test]",
+      "    public function it_${4:does_something}(): void",
+      "    {",
+      "        ${0:// Arrange, Act, Assert}",
+      "    }",
+      "}",
+      ""
+    ]
+  },
+
+  "XOOPS Test Method": {
+    "prefix": "xtestm",
+    "description": "Create a XOOPS 4.0 test method",
+    "body": [
+      "#[Test]",
+      "public function it_${1:does_something}(): void",
+      "{",
+      "    // Arrange",
+      "    ${2}",
+      "",
+      "    // Act",
+      "    ${3}",
+      "",
+      "    // Assert",
+      "    \\$this->assert${4:True}(${5});",
+      "}"
+    ]
+  },
+
+  "XOOPS Test Data Provider": {
+    "prefix": "xprovider",
+    "description": "Create a PHPUnit data provider",
+    "body": [
+      "#[Test]",
+      "#[DataProvider('${1:dataProvider}')]",
+      "public function it_${2:handles_various_inputs}(${3:string \\$input, bool \\$expected}): void",
+      "{",
+      "    ${4}",
+      "}",
+      "",
+      "public static function ${1:dataProvider}(): array",
+      "{",
+      "    return [",
+      "        '${5:case1}' => [${6:'value1', true}],",
+      "        '${7:case2}' => [${8:'value2', false}],",
+      "    ];",
+      "}"
+    ]
+  },
+
+  // --------------------------------------------------------------------------
+  // Common Patterns
+  // --------------------------------------------------------------------------
+
+  "XOOPS PHP File Header": {
+    "prefix": "xphp",
+    "description": "Create a XOOPS 4.0 PHP file header",
+    "body": [
+      "<?php",
+      "",
+      "declare(strict_types=1);",
+      "",
+      "namespace ${1:Module\\\\${2:Layer}};",
+      "",
+      "${0}"
+    ]
+  },
+
+  "XOOPS ULID Generation": {
+    "prefix": "xulid",
+    "description": "Generate a ULID",
+    "body": [
+      "\\$ulid = Ulid::generate();",
+      "${0}"
+    ]
+  },
+
+  "XOOPS ULID Validation": {
+    "prefix": "xulidv",
+    "description": "Validate a ULID string",
+    "body": [
+      "if (!Ulid::isValid(\\$${1:id})) {",
+      "    throw Invalid${2:Entity}Id::invalidFormat(\\$${1:id});",
+      "}",
+      "${0}"
+    ]
+  },
+
+  "XOOPS Slug Creation": {
+    "prefix": "xslug",
+    "description": "Create a slug from text",
+    "body": [
+      "\\$slug = Slug::create(\\$${1:text}, [",
+      "    'maxLength' => ${2:60},",
+      "    'separator' => '-',",
+      "]);",
+      "${0}"
+    ]
+  },
+
+  "XOOPS Status Transition": {
+    "prefix": "xtrans",
+    "description": "Check and perform status transition",
+    "body": [
+      "if (!\\$this->status->canTransitionTo(${1:Status}::${2:Published})) {",
+      "    throw InvalidStatusTransition::create(\\$this->status, ${1:Status}::${2:Published});",
+      "}",
+      "\\$this->status = ${1:Status}::${2:Published};",
+      "\\$this->touch();",
+      "${0}"
+    ]
+  },
+
+  "XOOPS MySQL Repository Method": {
+    "prefix": "xsql",
+    "description": "Create a MySQL repository query method",
+    "body": [
+      "\\$sql = sprintf(",
+      "    \"SELECT * FROM %s WHERE ${1:column} = %s\",",
+      "    \\$this->db->prefix('${2:table}'),",
+      "    \\$this->db->quoteString(\\$${3:value})",
+      ");",
+      "",
+      "\\$result = \\$this->db->query(\\$sql);",
+      "\\$row = \\$this->db->fetchArray(\\$result);",
+      "",
+      "if (!\\$row) {",
+      "    return null;",
+      "}",
+      "",
+      "return \\$this->hydrate(\\$row);",
+      "${0}"
+    ]
+  },
+
+  "XOOPS Container Service": {
+    "prefix": "xservice",
+    "description": "Add a service to the container",
+    "body": [
+      "public function get${1:Service}(): ${2:ServiceClass}",
+      "{",
+      "    return \\$this->services[${2:ServiceClass}::class] ??=",
+      "        new ${2:ServiceClass}(${3:\\$this->getRepository()});",
+      "}",
+      "${0}"
+    ]
+  },
+
+  // --------------------------------------------------------------------------
+  // API Patterns
+  // --------------------------------------------------------------------------
+
+  "XOOPS API Response": {
+    "prefix": "xapires",
+    "description": "Create an API JSON response",
+    "body": [
+      "return Response::json([",
+      "    'data' => [",
+      "        'id' => \\$${1:entity}->getId()->toString(),",
+      "        'type' => '${2:entity}',",
+      "        'attributes' => [",
+      "            '${3:title}' => \\$${1:entity}->get${4:Title}()->toString(),",
+      "            'created_at' => \\$${1:entity}->getCreatedAt()->format(\\\\DateTimeInterface::RFC3339),",
+      "        ],",
+      "    ],",
+      "]);",
+      "${0}"
+    ]
+  },
+
+  "XOOPS API Validation": {
+    "prefix": "xvalidate",
+    "description": "Validate API request data",
+    "body": [
+      "\\$data = \\$this->validate(\\$request->getBody(), [",
+      "    '${1:title}' => 'required|string|min:1|max:200',",
+      "    '${2:content}' => 'string|max:50000',",
+      "]);",
+      "${0}"
+    ]
+  }
+}
