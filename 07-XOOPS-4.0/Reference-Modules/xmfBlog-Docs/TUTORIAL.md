@@ -106,26 +106,23 @@ Every section explains **what** the component does, **why** it exists, and shows
 
 XMF components are organized in four tiers, ordered by dependency:
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  TIER 3: Infrastructure                                 │
-│  CacheManager, Migration, PreloadEventBridge,           │
-│  PluginManager, ServiceManager, Queue, QueueRunner,     │
-│  MediaManager, NotificationManager, AuditLogger,        │
-│  ReportBuilder, ImportExport, Versioning, Webhook,      │
-│  Scheduler, Validation                                  │
-├─────────────────────────────────────────────────────────┤
-│  TIER 2: Extended (XOOPS-aware)                         │
-│  10 Object Traits, Repository, HandlerTrait,            │
-│  TreeHandlerTrait, TemporalQueryTrait,                  │
-│  SmartForm, ObjectTable, TableStateManager,             │
-│  ApiController, MetaGenerator, ItemPermission,          │
-│  FieldDefinitionReader, ConfigManager, FiscalPeriod     │
-├─────────────────────────────────────────────────────────┤
-│  TIER 1: Core (Zero-Dependency Foundations)             │
-│  Container, EventBus, ListenerProvider, Pipeline,       │
-│  QueryBuilder, Enums, Value Objects, Validation Rules   │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+block-beta
+    columns 1
+    block:T3["TIER 3: Infrastructure"]
+        T3a["CacheManager, Migration, PreloadEventBridge, PluginManager, ServiceManager"]
+        T3b["Queue, QueueRunner, MediaManager, NotificationManager, AuditLogger"]
+        T3c["ReportBuilder, ImportExport, Versioning, Webhook, Scheduler, Validation"]
+    end
+    block:T2["TIER 2: Extended (XOOPS-aware)"]
+        T2a["10 Object Traits, Repository, HandlerTrait, TreeHandlerTrait, TemporalQueryTrait"]
+        T2b["SmartForm, ObjectTable, TableStateManager, ApiController, MetaGenerator"]
+        T2c["ItemPermission, FieldDefinitionReader, ConfigManager, FiscalPeriod"]
+    end
+    block:T1["TIER 1: Core (Zero-Dependency Foundations)"]
+        T1a["Container, EventBus, ListenerProvider, Pipeline"]
+        T1b["QueryBuilder, Enums, Value Objects, Validation Rules"]
+    end
 ```
 
 **Tier 1** has no XOOPS dependencies and can be tested in isolation.
@@ -135,31 +132,17 @@ XMF components are organized in four tiers, ordered by dependency:
 
 The blog module uses components from all four tiers. Here is how data flows through the architecture:
 
-```
-Browser Request
-    │
-    ▼
-header.php ──► Container::getInstance()
-    │              │
-    ▼              ▼
-index.php     BlogModule::boot()
-    │          registers all services:
-    │          db, events, config, cache,
-    │          repos, permissions,
-    │          pipeline, api_controller
-    │
-    ├──► $postRepo->query()
-    │        builds fluent SQL query (prefixed table)
-    │
-    ├──► PostRepository::findAll($query)
-    │        executes query + lifecycle hooks
-    │
-    ├──► MetaGenerator (SEO meta tags)
-    │
-    ├──► EventBus::dispatch(DotEvent)
-    │        notifies all listeners
-    │
-    └──► Smarty template renders HTML
+```mermaid
+flowchart TB
+    A["Browser Request"] --> B["header.php"]
+    B --> C["Container::getInstance()"]
+    B --> D["BlogModule::boot()<br/>registers all services:<br/>db, events, config, cache,<br/>repos, permissions,<br/>pipeline, api_controller"]
+    C --> E["index.php"]
+    E --> F["$postRepo->query()<br/>builds fluent SQL query"]
+    F --> G["PostRepository::findAll()<br/>executes query + lifecycle hooks"]
+    G --> H["MetaGenerator<br/>SEO meta tags"]
+    H --> I["EventBus::dispatch()<br/>notifies all listeners"]
+    I --> J["Smarty template renders HTML"]
 ```
 
 ---
@@ -3429,19 +3412,19 @@ The Taxonomy system (`Xmf\Taxonomy`) provides WordPress-inspired content classif
 
 ### Architecture
 
-```
-Module Entity                  TaxonomyManager              Database
-     │                              │                          │
-     │  implements                  │                          │
-     │  TaggableInterface           │                          │
-     │         │                    │                          │
-     ▼         ▼                    ▼                          │
- PostRepository ─► assignTerms() ──► xmf_taxonomies              │
-   afterSave()     removeTerms()     xmf_terms                   │
-   afterDelete()                     xmf_term_items              │
-                     │                                         │
-                     ├─ dispatch TermAssigned ──► TagModuleBridge
-                     └─ dispatch TermUnassigned ─► (syncs to XOOPS Tag module)
+```mermaid
+flowchart LR
+    Entity["Module Entity<br/>implements TaggableInterface"]
+    Repo["PostRepository<br/>afterSave()<br/>afterDelete()"]
+    TM["TaxonomyManager<br/>assignTerms()<br/>removeTerms()"]
+    DB["Database<br/>xmf_taxonomies<br/>xmf_terms<br/>xmf_term_items"]
+    Bridge["TagModuleBridge<br/>(syncs to XOOPS Tag module)"]
+
+    Entity --> Repo
+    Repo --> TM
+    TM --> DB
+    TM -->|"dispatch TermAssigned"| Bridge
+    TM -->|"dispatch TermUnassigned"| Bridge
 ```
 
 Three database tables:

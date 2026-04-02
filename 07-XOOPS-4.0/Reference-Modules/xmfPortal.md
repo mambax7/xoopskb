@@ -18,44 +18,24 @@ xmfPortal is the companion reference module to xmfBlog. Where xmfBlog showcases 
 
 ## Architecture
 
-```
-                    ┌─────────────────────────────────────────┐
-                    │            PortalModule.php             │
-                    │         (DI Container Bootstrap)        │
-                    └────────────────┬────────────────────────┘
-                                     │
-          ┌──────────────────────────┼──────────────────────────┐
-          │                          │                          │
-    ┌─────▼──────┐           ┌──────▼───────┐          ┌──────▼───────┐
-    │  Admin UI  │           │  Frontend    │          │   REST API   │
-    │  11 pages  │           │  index.php   │          │   api.php    │
-    │            │           │  page.php    │          │  (widgets,   │
-    │            │           │              │          │   ratings)   │
-    └─────┬──────┘           └──────┬───────┘          └──────────────┘
-          │                          │
-          └──────────┬───────────────┘
-                     │
-    ┌────────────────▼────────────────────────┐
-    │           Repositories                  │
-    │  PageRepository   PageSectionRepository │
-    │  (lifecycle hooks: audit, events)       │
-    └────────────────┬────────────────────────┘
-                     │
-    ┌────────────────▼────────────────────────┐
-    │           Widget System                 │
-    │  WidgetRegistry → WidgetRenderer        │
-    │  WidgetComposer → WidgetAreaManager     │
-    │  Stock widgets + module extensions      │
-    │  DataProvider for content binding       │
-    └────────────────┬────────────────────────┘
-                     │
-          ┌──────────┼──────────┐
-          │          │          │
-    ┌─────▼───┐ ┌───▼────┐ ┌──▼──────────┐
-    │ Events  │ │ Rating │ │ Listeners   │
-    │ 5 types │ │ System │ │ Analytics   │
-    │         │ │ 5 styles│ │ A/B Testing │
-    └─────────┘ └────────┘ └─────────────┘
+```mermaid
+flowchart TB
+    Boot["PortalModule.php<br/>(DI Container Bootstrap)"]
+
+    Boot --> Admin["Admin UI<br/>11 pages"]
+    Boot --> Frontend["Frontend<br/>index.php, page.php"]
+    Boot --> API["REST API<br/>api.php<br/>(widgets, ratings)"]
+
+    Admin --> Repos
+    Frontend --> Repos
+
+    Repos["Repositories<br/>PageRepository &nbsp; PageSectionRepository<br/>(lifecycle hooks: audit, events)"]
+
+    Repos --> Widgets["Widget System<br/>WidgetRegistry → WidgetRenderer<br/>WidgetComposer → WidgetAreaManager<br/>Stock widgets + module extensions<br/>DataProvider for content binding"]
+
+    Widgets --> Events["Events<br/>5 types"]
+    Widgets --> Rating["Rating System<br/>5 styles"]
+    Widgets --> Listeners["Listeners<br/>Analytics<br/>A/B Testing"]
 ```
 
 ---

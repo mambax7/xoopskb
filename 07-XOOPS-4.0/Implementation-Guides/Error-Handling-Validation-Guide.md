@@ -29,26 +29,19 @@ This guide uses **xmfblog** as the reference module.
 
 ## Overview
 
-```
-Request Flow:
-
-  Client Request
-       │
-       ▼
-  ApiRateLimitMiddleware ──→ 429 Too Many Requests
-       │
-       ▼
-  AuthMiddleware ──→ 401 Authentication Required
-       │
-       ▼
-  ApiPermissionMiddleware ──→ 403 Forbidden
-       │
-       ▼
-  PostApiController
-       │
-       ├─ validatePayload() ──→ 400/422 Validation Error
-       │
-       └─ Repository save/delete ──→ 200 Success
+```mermaid
+flowchart TB
+    Client["Client Request"] --> RL["ApiRateLimitMiddleware"]
+    RL -->|pass| Auth["AuthMiddleware"]
+    RL -->|"fail"| R429["429 Too Many Requests"]
+    Auth -->|pass| Perm["ApiPermissionMiddleware"]
+    Auth -->|"fail"| R401["401 Authentication Required"]
+    Perm -->|pass| Ctrl["PostApiController"]
+    Perm -->|"fail"| R403["403 Forbidden"]
+    Ctrl --> Val["validatePayload()"]
+    Val -->|"fail"| R422["400/422 Validation Error"]
+    Val -->|pass| Repo["Repository save/delete"]
+    Repo --> R200["200 Success"]
 ```
 
 Each layer returns an `ApiResponse` on failure, short-circuiting the pipeline. On success, the request flows to the next layer.
@@ -434,10 +427,10 @@ These are handled by the XMF framework's global exception handler, not by module
 
 ## Related
 
-- [[Entity-Mapping-Database-Patterns-Guide|Entity Mapping & Database Patterns]]
-- [[Repository-Query-Patterns-Guide|Repository & Query Patterns]]
-- [[Event-Driven-Architecture-Guide|Event-Driven Architecture]]
-- [[../../02-Core-Concepts/Security/Security-Best-Practices|Security Best Practices]]
+- [Entity Mapping & Database Patterns](Entity-Mapping-Database-Patterns-Guide.md)
+- [Repository & Query Patterns](Repository-Query-Patterns-Guide.md)
+- [Event-Driven Architecture](Event-Driven-Architecture-Guide.md)
+- [Security Best Practices](../../02-Core-Concepts/Security/Security-Best-Practices.md)
 
 ---
 

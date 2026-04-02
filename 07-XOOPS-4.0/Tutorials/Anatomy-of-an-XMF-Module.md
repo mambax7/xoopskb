@@ -20,31 +20,15 @@ For the complete 50-chapter deep dive, see the [XMF Architecture Tutorial](../Re
 
 When a user visits `modules/xmfblog/index.php`, here's what happens:
 
-```
-Browser request
-    │
-    ▼
-index.php
-    │ require header.php
-    ▼
-header.php
-    │ BlogModule::init()
-    ▼
-BlogModule::boot(Container)
-    │ registers 27 services
-    ▼
-Container ready
-    │
-    ▼
-index.php (continued)
-    │ $postRepo = $container->get('post_repo')
-    │ $posts = $postRepo->query()->...->findAll()
-    │ $xoopsTpl->assign('posts', $posts)
-    ▼
-Smarty renders xmfblog_index.tpl
-    │
-    ▼
-HTML response
+```mermaid
+flowchart TB
+    A["Browser request"] --> B["index.php"]
+    B -->|"require header.php"| C["header.php"]
+    C -->|"BlogModule::init()"| D["BlogModule::boot(Container)<br/>registers 27 services"]
+    D --> E["Container ready"]
+    E --> F["index.php (continued)<br/>$postRepo = $container->get('post_repo')<br/>$posts = $postRepo->query()->...->findAll()<br/>$xoopsTpl->assign('posts', $posts)"]
+    F --> G["Smarty renders xmfblog_index.tpl"]
+    G --> H["HTML response"]
 ```
 
 ---
@@ -297,36 +281,21 @@ This is safe to call from multiple modules -- each factory checks if the table a
 
 ## The Big Picture
 
-```
-BlogModule.php ─── boots ──→ Container (27 services)
-                                  │
-        ┌─────────────────────────┼─────────────────────────┐
-        │                         │                         │
-    Post.php              PostRepository.php         PostApiController.php
-    Category.php          CategoryRepository.php     AuthMiddleware.php
-    (entities)            (persistence +             ApiRateLimitMiddleware.php
-                           lifecycle hooks)          ApiPermissionMiddleware.php
-        │                         │                  (API layer)
-        │                         │
-        │                    ┌────┴────┐
-        │                    │ EventBus │
-        │                    └────┬────┘
-        │                         │
-        │              ┌──────────┼──────────┐
-        │              │          │          │
-        │         7 Events   Queue Jobs  Scheduled Tasks
-        │                     │              │
-        │              SendComment    ExpirePostsTask
-        │              NotificationJob PruneAuditLogTask
-        │                              PruneOldVersionsTask
-        │
-    ┌───┴───────────────────────────────────┐
-    │         XMF Infrastructure            │
-    │  Versioning · Audit · Cache           │
-    │  Taxonomy · Media · Notifications     │
-    │  Permissions · Config · Forms         │
-    │  Reports · Migrations · Plugins       │
-    └───────────────────────────────────────┘
+```mermaid
+flowchart TB
+    Boot["BlogModule.php"] -->|boots| Container["Container (27 services)"]
+
+    Container --> Entities["Post.php<br/>Category.php<br/>(entities)"]
+    Container --> Repos["PostRepository.php<br/>CategoryRepository.php<br/>(persistence + lifecycle hooks)"]
+    Container --> APILayer["PostApiController.php<br/>AuthMiddleware.php<br/>ApiRateLimitMiddleware.php<br/>ApiPermissionMiddleware.php<br/>(API layer)"]
+
+    Repos --> EB["EventBus"]
+
+    EB --> Events["7 Events"]
+    EB --> Jobs["Queue Jobs<br/>SendCommentNotificationJob"]
+    EB --> Tasks["Scheduled Tasks<br/>ExpirePostsTask<br/>PruneAuditLogTask<br/>PruneOldVersionsTask"]
+
+    Entities --> Infra["XMF Infrastructure<br/>Versioning · Audit · Cache<br/>Taxonomy · Media · Notifications<br/>Permissions · Config · Forms<br/>Reports · Migrations · Plugins"]
 ```
 
 ---

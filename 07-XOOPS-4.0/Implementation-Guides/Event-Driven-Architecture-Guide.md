@@ -30,18 +30,26 @@ This guide uses **xmfblog** for domain events, queue jobs, and scheduled tasks, 
 
 ## Architecture
 
-```
-Entity records event           Repository dispatches            Listeners react
-     │                              │                               │
-     ▼                              ▼                               ▼
-  Post.php                    PostRepository                   Listeners / Jobs
-  ┌──────────────┐           ┌──────────────┐           ┌──────────────────────┐
-  │ recordEvent( │           │  afterSave() │           │  AnalyticsListener   │
-  │   new Post   │──save()──▶│  afterDelete()│──dispatch─▶│  AbTestListener    │
-  │   Published  │           │              │    via     │  NotificationJob     │
-  │   Event()    │           │              │  EventBus  │  CacheInvalidation   │
-  │ )            │           │              │           │                      │
-  └──────────────┘           └──────────────┘           └──────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Entity["Entity records event"]
+        Post["Post.php<br/>recordEvent(<br/>new PostPublishedEvent())"]
+    end
+    subgraph Repo["Repository dispatches"]
+        Hooks["afterSave()<br/>afterDelete()"]
+    end
+    subgraph React["Listeners react"]
+        L1["AnalyticsListener"]
+        L2["AbTestListener"]
+        L3["NotificationJob"]
+        L4["CacheInvalidation"]
+    end
+
+    Post -->|"save()"| Hooks
+    Hooks -->|"dispatch via EventBus"| L1
+    Hooks --> L2
+    Hooks --> L3
+    Hooks --> L4
 ```
 
 ---
@@ -483,10 +491,10 @@ $container->singleton('task_runner', function (Container $c) {
 
 ## Related
 
-- [[Entity-Mapping-Database-Patterns-Guide|Entity Mapping & Database Patterns]]
-- [[Repository-Query-Patterns-Guide|Repository & Query Patterns]]
-- [[Error-Handling-Validation-Guide|Error Handling & Validation]]
-- [[../../02-Core-Concepts/Event-System|XOOPS Event System (2.5.x)]]
+- [Entity Mapping & Database Patterns](Entity-Mapping-Database-Patterns-Guide.md)
+- [Repository & Query Patterns](Repository-Query-Patterns-Guide.md)
+- [Error Handling & Validation](Error-Handling-Validation-Guide.md)
+- [XOOPS Event System (2.5.x)](../../02-Core-Concepts/Event-System.md)
 
 ---
 
